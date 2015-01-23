@@ -1,0 +1,9 @@
+* BBC Micro stuff
+
+Random bits for people that still use this classic 1980s UK computer.
+
+** BBCBasicToText
+
+Python 2.x script that converts tokenized BBC BASIC files to text.
+Originally by [[https://github.com/mattgodbolt][Matt Godbolt]]. I updated it with support for line numbers
+and BASIC II.
