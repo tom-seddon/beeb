@@ -2,8 +2,32 @@
 
 Random bits for people that still use this classic 1980s UK computer.
 
-** BBCBasicToText
+* BBCBasicToText
 
 Python 2.x script that converts tokenized BBC BASIC files to text.
 Originally by [[https://github.com/mattgodbolt][Matt Godbolt]]. I updated it with support for line numbers
 and BASIC II.
+
+Execute with =-h= to get a help page.
+
+Note: =BBCBasicToText= can be used in a pipeline, but when used this
+way it might not work properly on Windows as it doesn't (yet) reopen
+stdin in binary mode.
+
+** Using with git
+
+You can use =BBCBasicToText= as a git diff driver, so you can get text
+diffs of tokenized BASIC code.
+
+To do this, ensure =BBCBasicToText= is on =PATH=. Then edit the
+=.git/config= file in your working copy, and add something like this
+to the end:
+
+: [diff "bbcbasic"]
+:       textconv = BBCBasicToText
+
+Then use the [[http://git-scm.com/docs/gitattributes][=.gitattributes=]] file to specify the diff driver for your
+BBC BASIC files:
+
+: $.MYBAS diff=bbcbasic
+: $.OTHBAS diff=bbcbasic

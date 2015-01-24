@@ -265,27 +265,28 @@ def Decode(data,
     return output
 
 if __name__ == "__main__":
-    parser=optparse.OptionParser(usage="%prog [options] INPUT (OUTPUT)\n\nIf no OUTPUT specified, stdout.")
+    parser=optparse.OptionParser(usage="%prog [options] INPUT (OUTPUT)\n\n If no INPUT specified, or INPUT is -, read from stdin. If no OUTPUT specified, print output to stdout.")
     parser.add_option("-5",
                       "--basicv",
                       action="store_true",
                       help="if specified, BASIC V rather than 6502 BASIC.",
                       default=False)
     options,args=parser.parse_args()
-    if len(args)<1:
-        parser.print_help()
-        print>>sys.stderr,"FATAL: Must specify input file."
-        sys.exit(1)
+    # if len(args)<1:
+    #     parser.print_help()
+    #     print>>sys.stderr,"FATAL: Must specify input file."
+    #     sys.exit(1)
 
     if len(args)>=2:
         output = open(args[1], 'w')
     else:
         output=sys.stdout
 
-    input=open(args[0],"rb")
-    entireFile=input.read()
-    input.close()
-    del input
+    if len(args)>=1 and args[0]!="-":
+        with open(args[0],"rb") as f:
+            entireFile=f.read()
+    else:
+        entireFile=sys.stdin.read()
 
     result=Decode(entireFile,
                   options.basicv)
