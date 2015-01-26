@@ -1,6 +1,17 @@
 * BBC Micro stuff
 
-Random bits for people that still use this classic 1980s UK computer.
+A random grab bag of random bits for people that still use this
+classic 1980s UK computer.
+
+When using the BBC Micro, I use [[http://web.inter.nl.net/users/J.Kortink/home/software/65link/][65Link]] - a package that lets your PC
+act as a file server for the BBC Micro. This way, I can use the PC to
+edit and assemble files for immediate use on the BBC Micro. (For some
+information about this sort of workflow, see here: [[http://www.tomseddon.plus.com/beeb/env.html][BBC Micro Development Environment]].)
+
+65Link stores each BBC file as a loose file on your PC (plus an
+associated file that stores file attributes), so any tools here are
+likely to be oriented towards this way of working as opposed to one
+that involves creating disk images or what have you.
 
 * BBCBasicToText
 
@@ -11,13 +22,14 @@ and BASIC II.
 Execute with =-h= to get a help page.
 
 Note: =BBCBasicToText= can be used in a pipeline, but when used this
-way it might not work properly on Windows as it doesn't (yet) reopen
-stdin in binary mode.
+way it might not work properly on Windows as it doesn't reopen stdin
+in binary mode. (This will get fixed at some point, I promise - just
+needs some Windows time.)
 
 ** Using with git
 
 You can use =BBCBasicToText= as a git diff driver, so you can get text
-diffs of tokenized BASIC code.
+diffs of changes to tokenized BASIC code.
 
 To do this, ensure =BBCBasicToText= is on =PATH=. Then edit the
 =.git/config= file in your working copy, and add something like this
@@ -30,4 +42,30 @@ Then use the [[http://git-scm.com/docs/gitattributes][=.gitattributes=]] file to
 BBC BASIC files:
 
 : $.MYBAS diff=bbcbasic
-: $.OTHBAS diff=bbcbasic
+: *.bbcbasic diff=bbcbasic
+
+You can use wildcards (as in this example) if your BBC BASIC file
+names conform to a pattern. There's no standard pattern, though, so
+you may have to just list them out in the =.gitattributes= file in
+each folder. Either way, it's worth the effort!
+
+* LEAToText
+
+Python 2.x script that converts [[http://web.inter.nl.net/users/J.Kortink/home/software/65link/][65Link]] .LEA metadata files to text. 
+
+** Using with git
+
+You can use =LEAToText= as a git diff driver, so you get text diffs of
+changes to file attributes in your 65Link volumes.
+
+To do this, ensure =LEAToText= is on =PATH=. Then edit the
+=.git/config= file in your working copy, and add something like this
+to the end:
+
+:[diff "lea"]
+:      textconv = LEAToText
+
+Then use the =.gitattributes= file to specify the diff driver for all
+LEA files:
+
+: *.lea diff=lea
