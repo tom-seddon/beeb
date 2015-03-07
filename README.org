@@ -13,6 +13,9 @@ associated file that stores file attributes), so any tools here are
 likely to be oriented towards this way of working as opposed to one
 that involves creating disk images or what have you.
 
+The tools are briefly described here. For more info, run with =-h= on
+the command line.
+
 * BBCBasicToText
 
 Python 2.x script that converts tokenized BBC BASIC files to text.
@@ -80,3 +83,13 @@ assumed to be 65Link files; they will be added to the disk image under
 their BBC name, using metadata from the corresponding .lea file if
 there is one.
 
+* disc_conv
+
+Python 2.x script that converts a SSD or DSD disc image into 65Link
+files. Supply name of disk on command line; it will create a
+65Link-compatible folder in the same folder, named after the disc
+image.
+
+Specify the =-b= switch to have it find tokenized BBC BASIC files,
+convert them to text with =BBCBasicToText.py=, and save them to a
+separate =raw= folder.
