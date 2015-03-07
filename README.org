@@ -69,3 +69,14 @@ Then use the =.gitattributes= file to specify the diff driver for all
 LEA files:
 
 : *.lea diff=lea
+
+* make_bbc_ssd
+
+Python 2.x script that builds a single-sided disc image from 65Link
+files.
+
+Supply list of files on the command line. Files with no extension are
+assumed to be 65Link files; they will be added to the disk image under
+their BBC name, using metadata from the corresponding .lea file if
+there is one.
+
