@@ -161,7 +161,7 @@ def main(options):
     ext=os.path.splitext(options.fname)[1]
     if os.path.normcase(ext)==os.path.normcase(".ssd"): num_sides=1
     elif os.path.normcase(ext)==os.path.normcase(".dsd"): num_sides=2
-    else: fatal("unknown number of sides on disc")
+    else: fatal("unrecognised extension: %s"%ext)
 
     # Figure out where to put files.
     dest_dir=options.dest_dir
