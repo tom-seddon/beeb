@@ -65,7 +65,7 @@ To do this, ensure =LEAToText= is on =PATH=. Then edit the
 =.git/config= file in your working copy, and add something like this
 to the end:
 
-:[diff "lea"]
+: [diff "lea"]
 :      textconv = LEAToText
 
 Then use the =.gitattributes= file to specify the diff driver for all
