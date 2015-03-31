@@ -93,3 +93,31 @@ image.
 Specify the =-b= switch to have it find tokenized BBC BASIC files,
 convert them to text with =BBCBasicToText.py=, and save them to a
 separate =raw= folder.
+
+* make_bbc_vol
+
+Python 2.7 script that creates a new 65Link volume with the given
+name.
+
+Supply name on command line to have it create that 65Link volume with
+drives 0 and 2; supply name and list of drives (e.g., "make_bbc_vol
+blah 0123") to have it create that 65Link volume with those drives.
+
+This tool can create invalid volumes, e.g., with just drive 1 - don't
+do that.
+
+* screen_conv
+
+Python 2.7 script that converts a BBC screen dump into an image.
+
+Dependencies: PIL
+
+Supply name on command line of dump of screen RAM (as saved by, e.g.,
+=*SAVE X FFFF3000+5000=) and MODE the dump was taken from. Use =-o= to
+specify output file. Specify =-r= to have image resized to 640x512,
+making the image look reasonable on a PC. Specify =-p= and a list of
+physical colour numbers, in order, to specify the palette (e.g., for a
+MODE4 grab, =-p 13= to specify yellow on red.)
+
+(Maybe one day I'll figure out how to make animated GIFs so that
+flashing colours can be supported.)
