@@ -124,3 +124,4 @@ MODE4 grab, =-p 13= to specify yellow on red.)
 
 (Maybe one day I'll figure out how to make animated GIFs so that
 flashing colours can be supported.)
+
