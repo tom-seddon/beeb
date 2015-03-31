@@ -57,7 +57,7 @@ each folder. Either way, it's worth the effort!
 
 * LEAToText
 
-Python 2.x script that converts [[http://web.inter.nl.net/users/J.Kortink/home/software/65link/][65Link]] .LEA metadata files to text. 
+Python 2.7 script that converts [[http://web.inter.nl.net/users/J.Kortink/home/software/65link/][65Link]] .LEA metadata files to text. 
 
 ** Using with git
 
@@ -78,7 +78,7 @@ LEA files:
 
 * make_bbc_ssd
 
-Python 2.x script that builds a single-sided disc image from 65Link
+Python 2.7 script that builds a single-sided disc image from 65Link
 files.
 
 Supply list of files on the command line. Files with no extension are
