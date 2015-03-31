@@ -269,8 +269,13 @@ if __name__ == "__main__":
     parser.add_option("-5",
                       "--basicv",
                       action="store_true",
-                      help="if specified, BASIC V rather than 6502 BASIC.",
+                      help="interpret as BASIC V rather than 6502 BASIC.",
                       default=False)
+    parser.add_option("-c",
+                      "--cr",
+                      action="store_true",
+                      help="separate lines with ASCII 13 (suitable for *EXEC)")
+                      
     options,args=parser.parse_args()
     # if len(args)<1:
     #     parser.print_help()
@@ -291,7 +296,10 @@ if __name__ == "__main__":
     result=Decode(entireFile,
                   options.basicv)
     for num,text in result:
-        print>>output,"%d%s"%(num,text)
+        output.write("%d%s%s"%(num,
+                               text,
+                               chr(13) if options.cr else "\n"))
+        #print>>output,"%d%s"%(num,text)
 
     if output is not sys.stdout:
         output.close()
