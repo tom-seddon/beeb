@@ -65,7 +65,7 @@
   ;; comment
   ;;
   (make-local-variable 'comment-start)
-  (setq comment-start "\\")
+  (setq comment-start "; ")
 
   ;; 
   ;; font lock
@@ -92,14 +92,16 @@
   ;; compilation
   ;;
   (setq compilation-error-regexp-alist
-	`(,(rx bol
-	       (zero-or-more space)
-	       (group (zero-or-more (not (any ":"))))
-	       ":"
-	       (group (one-or-more digit))
-	       ":")
-	  1
-	  2))
+	`((,(rx line-start
+		(0+ space)
+		(group (1+ any))
+		":"
+		(group (1+ digit))
+		": ")			; the space is to stop it
+					; finding the "Compilation
+					; started at..." line.
+	   1
+	   2)))
 
   ;;
   ;; imenu
