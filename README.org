@@ -138,3 +138,8 @@ To install, =require= it from your .emacs, and add a suitable entry to
 
 It's not especially clever. Just supports some basic stuff: font lock,
 syntax table, compilation error regexp, imenu.
+* dump_bbc_rom_info
+
+Simple tool that scans sideways ROM headers and prints info to stdout.
+I used this to have a quick look at [[http://wouter.bbcmicro.net/bbc/bbc-software.html][Wouter Scholten's monster ROM
+archive]].
