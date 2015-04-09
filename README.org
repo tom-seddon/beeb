@@ -125,3 +125,16 @@ MODE4 grab, =-p 13= to specify yellow on red.)
 (Maybe one day I'll figure out how to make animated GIFs so that
 flashing colours can be supported.)
 
+* beebasm-mode.el
+
+Emacs minor mode for [[http://www.retrosoftware.co.uk/wiki/index.php/BeebAsm][BeebAsm]] by Rich Talbot-Watkins. Tested with
+emacs 25.
+
+To install, =require= it from your .emacs, and add a suitable entry to
+=auto-mode-alist=. For example:
+
+: (require 'beebasm-mode)
+: (add-to-list 'auto-mode-alist '("\\.6502$" . beebasm-mode))
+
+It's not especially clever. Just supports some basic stuff: font lock,
+syntax table, compilation error regexp, imenu.
