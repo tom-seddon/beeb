@@ -80,17 +80,17 @@
   (modify-syntax-entry ?\\ "<" beebasm-mode-syntax-table)
   (modify-syntax-entry ?\n ">" beebasm-mode-syntax-table)
 
-  (loop for c in `(?+ ?- ?* ?/ ?< ?> ?^ ?( ?) ?[ ?] ?= ?!)
+  (loop for c in `(?+ ?- ?* ?/ ?< ?> ?^ ?( ?) ?[ ?] ?= ?! ?.)
 	do
 	(modify-syntax-entry c "." beebasm-mode-syntax-table))
 
-  ;; . and % are symbol constituent chars
-  (modify-syntax-entry ?. "_" beebasm-mode-syntax-table)
+  ;; % is symbol constituent chars
   (modify-syntax-entry ?% "_" beebasm-mode-syntax-table)
 
   ;;
   ;; compilation
   ;;
+  (make-local-variable 'compilation-error-regexp-alist)
   (setq compilation-error-regexp-alist
 	`((,(rx line-start
 		(0+ space)
@@ -113,13 +113,18 @@
 				 (any alphabetic "_")
 				 (zero-or-more (any alphanumeric "_")))))
 	   1)
-	  ("Macro"
-	   ,(rx bol
-		(zero-or-more space)
-		"MACRO"
-		(one-or-more space)
-		(any alphabetic "_")
-		(zero-or-more (any alphanumeric "_")))))))
+	  
+	  ;; ("Macro"
+	  ;;  ,(rx bol
+	  ;; 	(zero-or-more space)
+	  ;; 	"MACRO"
+	  ;; 	(one-or-more space)
+	  ;; 	(any alphabetic "_")
+	  ;; 	(zero-or-more (any alphanumeric "_")))
+	  ;;  1)
+	  
+	  ))
+  )
 		
   
 
