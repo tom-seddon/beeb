@@ -54,6 +54,36 @@ You can use wildcards (as in this example) if your BBC BASIC file
 names conform to a pattern. There's no standard pattern, though, so
 you may have to just list them out in the =.gitattributes= file in
 each folder. Either way, it's worth the effort!
+* beebasm-mode.el
+
+Emacs minor mode for [[http://www.retrosoftware.co.uk/wiki/index.php/BeebAsm][BeebAsm]] by Rich Talbot-Watkins. Tested with
+emacs 25.
+
+To install, =require= it from your .emacs, and add a suitable entry to
+=auto-mode-alist=. For example:
+
+: (require 'beebasm-mode)
+: (add-to-list 'auto-mode-alist '("\\.6502$" . beebasm-mode))
+
+It's not especially clever. Just supports some basic stuff: font lock,
+syntax table, compilation error regexp, imenu.
+
+* disc_conv
+
+Python 2.x script that converts a SSD or DSD disc image into 65Link
+files. Supply name of disk on command line; it will create a
+65Link-compatible folder in the same folder, named after the disc
+image.
+
+Specify the =-b= switch to have it find tokenized BBC BASIC files,
+convert them to text with =BBCBasicToText.py=, and save them to a
+separate =raw= folder.
+
+* dump_bbc_rom_info
+
+Simple tool that scans sideways ROM headers and prints info to stdout.
+I used this to have a quick look at [[http://wouter.bbcmicro.net/bbc/bbc-software.html][Wouter Scholten's monster ROM
+archive]].
 
 * LEAToText
 
@@ -75,7 +105,6 @@ Then use the =.gitattributes= file to specify the diff driver for all
 LEA files:
 
 : *.lea diff=lea
-
 * make_bbc_ssd
 
 Python 2.7 script that builds a single-sided disc image from 65Link
@@ -85,17 +114,6 @@ Supply list of files on the command line. Files with no extension are
 assumed to be 65Link files; they will be added to the disk image under
 their BBC name, using metadata from the corresponding .lea file if
 there is one.
-
-* disc_conv
-
-Python 2.x script that converts a SSD or DSD disc image into 65Link
-files. Supply name of disk on command line; it will create a
-65Link-compatible folder in the same folder, named after the disc
-image.
-
-Specify the =-b= switch to have it find tokenized BBC BASIC files,
-convert them to text with =BBCBasicToText.py=, and save them to a
-separate =raw= folder.
 
 * make_bbc_vol
 
@@ -124,22 +142,8 @@ MODE4 grab, =-p 13= to specify yellow on red.)
 
 (Maybe one day I'll figure out how to make animated GIFs so that
 flashing colours can be supported.)
+* set_bbc_lea
 
-* beebasm-mode.el
-
-Emacs minor mode for [[http://www.retrosoftware.co.uk/wiki/index.php/BeebAsm][BeebAsm]] by Rich Talbot-Watkins. Tested with
-emacs 25.
-
-To install, =require= it from your .emacs, and add a suitable entry to
-=auto-mode-alist=. For example:
-
-: (require 'beebasm-mode)
-: (add-to-list 'auto-mode-alist '("\\.6502$" . beebasm-mode))
-
-It's not especially clever. Just supports some basic stuff: font lock,
-syntax table, compilation error regexp, imenu.
-* dump_bbc_rom_info
-
-Simple tool that scans sideways ROM headers and prints info to stdout.
-I used this to have a quick look at [[http://wouter.bbcmicro.net/bbc/bbc-software.html][Wouter Scholten's monster ROM
-archive]].
+Manipulate 65Link =.lea= files, allowing you to change BBC file
+metadata (load address, execute address and attributes) from the
+command line.
