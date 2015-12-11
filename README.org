@@ -54,20 +54,6 @@ You can use wildcards (as in this example) if your BBC BASIC file
 names conform to a pattern. There's no standard pattern, though, so
 you may have to just list them out in the =.gitattributes= file in
 each folder. Either way, it's worth the effort!
-* beebasm-mode.el
-
-Emacs minor mode for [[http://www.retrosoftware.co.uk/wiki/index.php/BeebAsm][BeebAsm]] by Rich Talbot-Watkins. Tested with
-emacs 25.
-
-To install, =require= it from your .emacs, and add a suitable entry to
-=auto-mode-alist=. For example:
-
-: (require 'beebasm-mode)
-: (add-to-list 'auto-mode-alist '("\\.6502$" . beebasm-mode))
-
-It's not especially clever. Just supports some basic stuff: font lock,
-syntax table, compilation error regexp, imenu.
-
 * disc_conv
 
 Python 2.x script that converts a SSD or DSD disc image into 65Link
