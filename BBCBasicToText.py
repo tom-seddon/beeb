@@ -200,7 +200,7 @@ def Detokenise(line,
                 # 2-byte token
                 i+=1
                 sub=ord(line[i])
-                text=token[1][sub-0x8e]
+                text=token[sub-0x8e]
                 i+=1
 
             line_text+=text
@@ -247,7 +247,7 @@ def ReadLines(data):
             raise Exception, "Bad program"
         if data[1] == '\xff':
             break
-        lineNumber, length = struct.unpack('>hB', data[1:4])
+        lineNumber, length = struct.unpack('>HB', data[1:4])
         lineData = data[4:length]
         lines.append([lineNumber, lineData])
         data = data[length:]
