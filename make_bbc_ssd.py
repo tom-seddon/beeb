@@ -1,5 +1,5 @@
 #!env python
-import argparse,os,os.path,sys,struct
+import argparse,os,os.path,sys,struct,glob
 emacs=os.getenv("EMACS") is not None
 
 ##########################################################################
@@ -100,6 +100,12 @@ class File: pass
 def main(options):
     global g_verbose
     g_verbose=options.verbose
+
+    # Use glob.glob to expand the input files, since Windows-style
+    # shells don't do that for you.
+    fnames=[]
+    for pattern in options.fnames: fnames+=glob.glob(pattern)
+    options.fnames=fnames
     
     # Remove input files with an extension - this just makes it easier
     # to use from a POSIX-style shell.
