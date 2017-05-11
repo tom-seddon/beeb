@@ -181,7 +181,8 @@ def main(options):
     # Store catalogue data.
     next_sector=2
     for i,file in enumerate(files):
-        offset=8+8*i
+        # Files are stored in reverse sector order.
+        offset=8+8*(len(files)-1-i)
 
         for j in range(1,len(file.bbc_name)): sectors[0][offset+j-1]=file.bbc_name[j]
         sectors[0][offset+7]=file.bbc_name[0]
