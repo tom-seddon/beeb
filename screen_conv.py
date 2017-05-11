@@ -82,6 +82,9 @@ def main(options):
     # Read image data.
     with open(options.fname,"rb") as f: data=[ord(x) for x in f.read()]
 
+    data=data[options.offset:]
+    if options.count is not None: data=data[:options.count]
+
     # Image must have an exact number of 6845 character rows.
     stride=num_columns*8
     if len(data)%stride!=0: fatal("image data not a multiple of stride %d"%stride)
@@ -136,6 +139,20 @@ if __name__=="__main__":
                         "--palette",
                         default=None,
                         help="specify palette")
+
+    parser.add_argument("-d",
+                        "--offset",
+                        metavar="OFFSET",
+                        type=auto_int,
+                        default=0,
+                        help="offset of image data in file (default: %(default)s)")
+
+    parser.add_argument("-n",
+                        "--count",
+                        metavar="COUNT",
+                        type=auto_int,
+                        default=None,
+                        help="number of bytes of image data in file (default: all data starting from offset)")
 
     parser.add_argument("fname",
                         metavar="FILE",
