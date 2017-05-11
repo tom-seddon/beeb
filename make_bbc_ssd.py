@@ -82,14 +82,14 @@ def get_bbc_name(x):
 def get_data(xs):
     data=""
     for x in xs:
-        if type(x) is int:
+        if type(x) is int or type(x) is long:
             assert x>=0 and x<=255
             data+=chr(x)
         elif type(x) is str:
             assert len(x)==1
             data+=x
         else:
-            assert False,x
+            assert False,(x,type(x))
 
     return data
 
