@@ -157,28 +157,43 @@ def main(options):
     global emacs
     if options.not_emacs: emacs=False
 
+    #
+    if options.drive0 and options.drive2:
+        fatal("-0 and -2 are mutually exclusive")
+        
+    if (options.drive0 or options.drive2) and options.dest_dir is None:
+        fatal("must specify destination folder explicitly with -0 or -2")
+
     # Figure out disc sidedness.
     ext=os.path.splitext(options.fname)[1]
-    if os.path.normcase(ext)==os.path.normcase(".ssd"): num_sides=1
+    if os.path.normcase(ext)==os.path.normcase(".ssd"):
+        num_sides=1
+        if options.drive2: fatal("disc image is single-sided")
     elif os.path.normcase(ext)==os.path.normcase(".dsd"): num_sides=2
     else: fatal("unrecognised extension: %s"%ext)
 
     # Figure out where to put files.
     dest_dir=options.dest_dir
-    if dest_dir is None:
-        dest_dir=os.path.join(os.path.dirname(options.fname))
+    if options.drive0 or options.drive2: pass
+    else:
+        if dest_dir is None:
+            dest_dir=os.path.join(os.path.dirname(options.fname))
 
-    dest_dir=os.path.join(dest_dir,
-                          os.path.splitext(os.path.basename(options.fname))[0])
+        dest_dir=os.path.join(dest_dir,
+                              os.path.splitext(os.path.basename(options.fname))[0])
 
-    # 65Link barfs if there's no drive 2, so always create both.
-    mkdir(os.path.join(dest_dir,"0"))
-    mkdir(os.path.join(dest_dir,"2"))
+        # 65Link barfs if there's no drive 2, so always create both.
+        mkdir(os.path.join(dest_dir,"0"))
+        mkdir(os.path.join(dest_dir,"2"))
 
     # Load the image
     with open(options.fname,"rb") as f: image=Disc(num_sides,80,10,f.read())
+
+    if options.drive0: sides=[0]
+    elif options.drive1: sides=[1]
+    else: sides=range(num_sides)
     
-    for side in range(num_sides):
+    for side in sides:
         drive=side*2
 
         title=(image.read_string(side,0,0,0,8)+image.read_string(side,0,1,0,4)).replace(chr(0),"")
@@ -266,7 +281,8 @@ def main(options):
             contents_str="".join([chr(x) for x in contents])
 
             # Write 65link copy.
-            sfl_folder=os.path.join(dest_dir,"%d"%drive)
+            if options.drive0 or options.drive2: sfl_folder=dest_dir
+            else: sfl_folder=os.path.join(dest_dir,"%d"%drive)
 
             sfl_file_name="%s%s"%(convert_to_65link_char.get(dir,dir),
                                   "".join([convert_to_65link_char.get(c,c) for c in name]))
@@ -332,6 +348,18 @@ if __name__=="__main__":
                         metavar="DIR",
                         help="where to put files (will use disc image folder if not specified)")
 
+    parser.add_argument("-0",
+                        default=None,
+                        action="store_true",
+                        dest="drive0",
+                        help="convert only side 0, putting files directly in dest dir (which must be given explicitly)")
+
+    parser.add_argument("-2",
+                        default=None,
+                        action="store_true",
+                        dest="drive2",
+                        help="convert only side 2, putting files directly in dest dir (which must be given explicitly)")
+    
     parser.add_argument("fname",
                         metavar="FILE",
                         help="name of disc to convert")
