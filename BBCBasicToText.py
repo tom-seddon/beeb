@@ -205,7 +205,9 @@ def Detokenise(line,
 
             line_text+=text
         else:
-            line_text+=line[i]
+            if c==ord('"'): tokenize=not tokenize
+            if (c<32 or c>=128) and not options.codes: line_text+=' '
+            else: line_text+=line[i]
             i+=1
 
     return line_text
@@ -239,18 +241,20 @@ def ReadLines(data):
     """Returns a list of [line number, tokenised line] from a binary
        BBC BASIC V format file."""
     lines = []
+    i=0
     while True:
-        if len(data) < 2:
+        if i+2>len(data):#len(data) < 2:
             raise Exception, "Bad program"
-        if data[0] != '\r':
+        if data[i]!='\r':#data[0] != '\r':
             print `data`
             raise Exception, "Bad program"
-        if data[1] == '\xff':
+        if data[i+1]=='\xff':#data[1] == '\xff':
             break
-        lineNumber, length = struct.unpack('>HB', data[1:4])
-        lineData = data[4:length]
+        lineNumber, length = struct.unpack('>HB', data[i+1:i+4])
+        lineData = data[i+4:i+length]
         lines.append([lineNumber, lineData])
-        data = data[length:]
+        i+=length
+        #data = data[length:]
     return lines
 
 def Decode(data,
@@ -275,6 +279,9 @@ if __name__ == "__main__":
                       "--cr",
                       action="store_true",
                       help="separate lines with ASCII 13 (suitable for *EXEC)")
+    parser.add_option("--codes",
+                      action="store_true",
+                      help="pass though control codes")
                       
     options,args=parser.parse_args()
     # if len(args)<1:
