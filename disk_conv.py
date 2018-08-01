@@ -305,7 +305,7 @@ def main(options):
                 raw_file_name="%s.%s"%(convert_to_windows(dir),
                                        convert_to_windows(name))
                 
-                decoded=BBCBasicToText.Decode(contents_str)
+                decoded=BBCBasicToText.DecodeLines(contents_str)
                 for wrap in [False]:
                     ext=".wrap.txt" if wrap else ".txt"
                     f=open(os.path.join(raw_folder,

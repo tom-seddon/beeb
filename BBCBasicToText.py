@@ -12,19 +12,33 @@
 import struct, re, getopt, sys,optparse
 from types import *
 
+##########################################################################
+##########################################################################
+
 # Referred to as "ESCFN" tokens in the source, starting at 0x8e.
 cfnTokens = [
     'SUM', 'BEAT']
+
+##########################################################################
+##########################################################################
+
 # Referred to as "ESCCOM" tokens in the source, starting at 0x8e.
 comTokens = [
     'APPEND', 'AUTO', 'CRUNCH', 'DELET', 'EDIT', 'HELP', 'LIST', 'LOAD',
     'LVAR', 'NEW', 'OLD', 'RENUMBER', 'SAVE', 'TEXTLOAD', 'TEXTSAVE', 'TWIN'
     'TWINO', 'INSTALL']
+
+##########################################################################
+##########################################################################
+
 # Referred to as "ESCSTMT", starting at 0x8e.
 stmtTokens= [
     'CASE', 'CIRCLE', 'FILL', 'ORIGIN', 'PSET', 'RECT', 'SWAP', 'WHILE',
     'WAIT', 'MOUSE', 'QUIT', 'SYS', 'INSTALL', 'LIBRARY', 'TINT', 'ELLIPSE',
     'BEATS', 'TEMPO', 'VOICES', 'VOICE', 'STEREO', 'OVERLAY']
+
+##########################################################################
+##########################################################################
 
 # The list of BBC BASIC V tokens:
 # Base tokens, starting at 0x7f
@@ -160,9 +174,27 @@ tokens = [
     'OSCLI',#0xff
 ]
 
+##########################################################################
+##########################################################################
 
-def Detokenise(line,
-               basicv):
+class Program:
+    def __init__(self):
+        self.lines=[]
+        self.labels={}
+        self._next_label=0
+
+    def add_line(self,num,text):
+        self.lines.append((num,text))
+
+    def add_label(self,line):
+        if line not in self.labels:
+            self.labels[line]=self._next_label
+            self._next_label+=1
+
+##########################################################################
+##########################################################################
+
+def Detokenise(line,basicv,add_labels,program):
     line_text=""
     i=0
     tokenize=True
@@ -174,18 +206,15 @@ def Detokenise(line,
 
             # if it's a tuple, pick BASIC 2 or BASIC V part.
             if isinstance(token,tuple):
-                if basicv:
-                    token=token[1]
-                else:
-                    token=token[0]
+                if basicv: token=token[1]
+                else: token=token[0]
             
             if isinstance(token,str):
                 text=token
                 i+=1
 
                 # Special case
-                if text=="REM":
-                    tokenize=False
+                if text=="REM": tokenize=False
                 
             elif token is None:
                 # line number
@@ -193,8 +222,13 @@ def Detokenise(line,
                 msb=b[3]^((b[1]<<4)&0xFF)
                 lsb=b[2]^(((b[1]&0x30)<<2)&0xFF)
                 line_number=(lsb<<0)|(msb<<8)
-                text=str(line_number)
-                
+                if add_labels:
+                    program.add_label(line_number)
+                else:
+                    if line_number in program.labels:
+                        text='@%04d'%program.labels[line_number]
+                    else: text=str(line_number)
+                                 
                 i+=4
             else:
                 # 2-byte token
@@ -212,30 +246,8 @@ def Detokenise(line,
 
     return line_text
             
-#     """Replace all tokens in the line 'line' with their ASCII equivalent."""
-#     # Internal function used as a callback to the regular expression
-#     # to replace tokens with their ASCII equivalents.
-#     def ReplaceFunc(match):
-#         ext, token = match.groups()
-#         tokenOrd = ord(token[0])
-#         if ext: # An extended opcode, CASE/WHILE/SYS etc
-#             if ext == '\xc6':
-#                 return cfnTokens[tokenOrd-0x8e]
-#             if ext == '\xc7':
-#                 return comTokens[tokenOrd-0x8e]
-#             if ext == '\xc8':
-#                 return stmtTokens[tokenOrd-0x8e]
-#             raise Exception, "Bad token"
-#         else: # Normal token, plus any extra characters
-#             return tokens[tokenOrd-127] + token[1:]
-
-#     # This regular expression is essentially:
-#     # (Optional extension token) followed by
-#     # (REM token followed by the rest of the line)
-#     #     -- this ensures we don't detokenise the REM statement itself
-#     # OR
-#     # (any token)
-#     return re.sub(r'([\xc6-\xc8])?(\xf4.*|[\x7f-\xff])', ReplaceFunc, line)
+##########################################################################
+##########################################################################
 
 def ReadLines(data):
     """Returns a list of [line number, tokenised line] from a binary
@@ -243,13 +255,10 @@ def ReadLines(data):
     lines = []
     i=0
     while True:
-        if i+2>len(data):#len(data) < 2:
-            raise Exception, "Bad program"
-        if data[i]!='\r':#data[0] != '\r':
-            print `data`
-            raise Exception, "Bad program"
-        if data[i+1]=='\xff':#data[1] == '\xff':
-            break
+        if i+2>len(data): raise Exception, "Bad program"
+        if data[i]!='\r': raise Exception, "Bad program"
+        if data[i+1]=='\xff': break
+        
         lineNumber, length = struct.unpack('>HB', data[i+1:i+4])
         lineData = data[i+4:i+length]
         lines.append([lineNumber, lineData])
@@ -257,17 +266,33 @@ def ReadLines(data):
         #data = data[length:]
     return lines
 
-def Decode(data,
-           basicv=False):
-    """Decode binary data 'data' and write the result to 'output'."""
-    output=[]
-    lines = ReadLines(data)
-    for lineNumber, line in lines:
-        lineData = Detokenise(line,
-                              basicv)
-        output.append((lineNumber,lineData))
-    return output
+##########################################################################
+##########################################################################
 
+def DecodeProgram(data,basicv=False,line_numbers=True):
+    program=Program()
+
+    lines=ReadLines(data)
+
+    if not line_numbers:
+        for num,line in lines: Detokenise(line,basicv,True,program)
+
+    for num,line in lines:
+        text=Detokenise(line,basicv,False,program)
+        program.add_line(num,text)
+
+    return program
+
+##########################################################################
+##########################################################################
+
+def DecodeLines(data,basicv=False,line_numbers=True):
+    program=DecodeProgram(data,basicv,line_numbers)
+    return program.lines
+
+##########################################################################
+##########################################################################
+                 
 if __name__ == "__main__":
     parser=optparse.OptionParser(usage="%prog [options] INPUT (OUTPUT)\n\n If no INPUT specified, or INPUT is -, read from stdin. If no OUTPUT specified, print output to stdout.")
     parser.add_option("-5",
@@ -282,6 +307,11 @@ if __name__ == "__main__":
     parser.add_option("--codes",
                       action="store_true",
                       help="pass though control codes")
+    parser.add_option('-n',
+                      action='store_false',
+                      default=True,
+                      dest='line_numbers',
+                      help="print @ labels, not line numbers (hack for diffs)")
                       
     options,args=parser.parse_args()
     # if len(args)<1:
@@ -289,24 +319,21 @@ if __name__ == "__main__":
     #     print>>sys.stderr,"FATAL: Must specify input file."
     #     sys.exit(1)
 
-    if len(args)>=2:
-        output = open(args[1], 'w')
-    else:
-        output=sys.stdout
+    if len(args)>=2: output = open(args[1], 'w')
+    else: output=sys.stdout
 
     if len(args)>=1 and args[0]!="-":
-        with open(args[0],"rb") as f:
-            entireFile=f.read()
-    else:
-        entireFile=sys.stdin.read()
+        with open(args[0],"rb") as f: entireFile=f.read()
+    else: entireFile=sys.stdin.read()
 
-    result=Decode(entireFile,
-                  options.basicv)
-    for num,text in result:
-        output.write("%d%s%s"%(num,
-                               text,
-                               chr(13) if options.cr else "\n"))
-        #print>>output,"%d%s"%(num,text)
+    program=DecodeProgram(entireFile,options.basicv,options.line_numbers)
+    cr=chr(13) if options.cr else "\n"
+    for num,text in program.lines:
+        if num in program.labels:
+            output.write('@%04d:%s'%(program.labels[num],cr))
 
-    if output is not sys.stdout:
-        output.close()
+        if options.line_numbers: output.write('%d'%num)
+
+        output.write('%s%s'%(text,cr))
+
+    if output is not sys.stdout: output.close()

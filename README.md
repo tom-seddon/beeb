@@ -44,7 +44,11 @@ To do this, ensure `BBCBasicToText` is on `PATH`. Then edit the
 to the end:
 
     [diff "bbcbasic"]
-        textconv = BBCBasicToText
+        textconv = BBCBasicToText -n
+
+(The `-n` tells it to operate in a diff-friendly mode: no leading line
+numbers, and line numbers in the program (e.g., `GOTO`, `RESTORE`)
+replaced with numbered `@xxxx` labels.)
 
 Then use the
 [`.gitattributes`](http://git-scm.com/docs/gitattributes])file to
@@ -57,7 +61,8 @@ You can use wildcards (as in this example) if your BBC BASIC file
 names conform to a pattern. There's no standard pattern, though, so
 you may have to just list them out in the `.gitattributes` file in
 each folder. Either way, it's worth the effort!
-* disc_conv
+
+# disc_conv
 
 Python 2.x script that converts a SSD or DSD disc image into 65Link
 files. Supply name of disk on command line; it will create a
