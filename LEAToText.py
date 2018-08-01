@@ -1,5 +1,8 @@
-#!env python
-import sys,struct,os,os.path,sys
+#!/usr/bin/python
+import sys,struct,os,os.path,sys,argparse
+
+##########################################################################
+##########################################################################
 
 translate={
     "_sp":chr(32+0),"_xm":chr(32+1),"_dq":chr(32+2),"_ha":chr(32+3),"_do":chr(32+4),"_pc":chr(32+5),"_am":chr(32+6),"_sq":chr(32+7),
@@ -16,8 +19,12 @@ translate={
     "x":chr(32+88),"y":chr(32+89),"z":chr(32+90),"_cb":chr(32+91),"_ba":chr(32+92),"_bc":chr(32+93),"_no":chr(32+94),
 }
 
+##########################################################################
+##########################################################################
+
 def get_bbc_file_name(pc_file_name):
     src=os.path.splitext(os.path.split(pc_file_name)[1])[0]
+    print src
     dest=""
 
     i=0
@@ -34,14 +41,34 @@ def get_bbc_file_name(pc_file_name):
             i+=1
 
     return dest[0]+"."+dest[1:]
+
+##########################################################################
+##########################################################################
+
+def main(options):
+    with open(options.fname,"rb") as f: data=f.read()
+    if len(data)==12:
+        l,e,a=struct.unpack("<III",data)
+        if options.show_name:
+            sys.stdout.write('%-10s '%get_bbc_file_name(fname))
+
+        sys.stdout.write('%08X %08X %s'%(l,e,"L" if (a&8) else ""))
+        sys.stdout.write('\n')
     
+
+##########################################################################
+##########################################################################
+
 if __name__=="__main__":
-    for fname in sys.argv[1:]:
-        with open(fname,"rb") as f:
-            data=f.read()
-            if len(data)==12:
-                l,e,a=struct.unpack("<III",data)
-                print "%-10s %08X %08X %s"%(get_bbc_file_name(fname),
-                                            l,
-                                            e,
-                                            "L" if (a&8) else "")
+    parser=argparse.ArgumentParser(description='show text representation of 65Link .lea file')
+
+    parser.add_argument('-n',
+                        dest='show_name',
+                        action='store_false',
+                        help="don't try to print file name")
+
+    parser.add_argument('fname',
+                        metavar='FILE',
+                        help='file to show')
+
+    main(parser.parse_args(sys.argv[1:]))
