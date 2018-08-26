@@ -126,7 +126,7 @@ class Disc:
                   sector,
                   offset):
         assert side>=0 and side<self.num_sides
-        assert track>=0 and track<self.num_tracks
+        assert track>=0 and track<self.num_tracks,(track,self.num_tracks)
         assert sector>=0 and sector<self.num_sectors
         assert offset>=0 and offset<256
 
@@ -190,7 +190,7 @@ def main(options):
     with open(options.fname,"rb") as f: image=Disc(num_sides,80,10,f.read())
 
     if options.drive0: sides=[0]
-    elif options.drive1: sides=[1]
+    elif options.drive2: sides=[1]
     else: sides=range(num_sides)
     
     for side in sides:
