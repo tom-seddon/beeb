@@ -15,11 +15,6 @@ are oriented towards this way of working as opposed to working
 directly with disk images. (There are also
 [other tools that work with this format](https://www.stairwaytohell.com/essentials/index.html?page=homepage).)
 
-(There are also a couple of tools that work with
-[John Kortink's 65Link](http://www.zeridajh.org/software/65link/index.htm),
-which works in a similar sort of way but with a different on-disk
-format.)
-
 The tools are briefly described here. For more info, run each with
 `-h` on the command line.
 
@@ -84,32 +79,6 @@ Simple tool that scans sideways ROM headers and prints info to stdout.
 I used this to have a quick look at [Wouter Scholten's monster ROM
 archive](http://wouter.bbcmicro.net/bbc/bbc-software.html).
 
-# LEAToText
-
-Python 2.7 script that converts
-[65Link](http://web.inter.nl.net/users/J.Kortink/home/software/65link/)
-.LEA metadata files to text.
-
-## Using with git
-
-You can use `LEAToText` as a git diff driver, so you get text diffs of
-changes to file attributes in your 65Link volumes.
-
-To do this, ensure `LEAToText` is on `PATH`. Then edit the
-`.git/config` file in your working copy, and add something like this
-to the end:
-
-    [diff "lea"]
-        textconv = LEAToText -n
-		
-(The `-n` tells it not to try to display the file name. The temporary
-files created by Git probably don't have valid 65Link names.)
-
-Then use the `.gitattributes` file to specify the diff driver for all
-LEA files:
-
-    *.lea diff=lea
-
 # make_bbc_ssd
 
 Python 2.7 script that builds a single-sided disc image from .inf
@@ -118,18 +87,6 @@ files.
 Supply list of files on the command line. Files that have a
 corresponding .inf file are assumed to be BBC files, and other files
 are ignored.
-
-# make_bbc_vol
-
-Python 2.7 script that creates a new 65Link volume with the given
-name.
-
-Supply name on command line to have it create that 65Link volume with
-drives 0 and 2; supply name and list of drives (e.g., "make_bbc_vol
-blah 0123") to have it create that 65Link volume with those drives.
-
-This tool can create invalid volumes, e.g., with just drive 1 - don't
-do that.
 
 # screen_conv
 
@@ -146,12 +103,6 @@ MODE4 grab, `-p 13` to specify yellow on red.)
 
 (Maybe one day I'll figure out how to make animated GIFs so that
 flashing colours can be supported.)
-
-# set_bbc_lea
-
-Manipulate 65Link `.lea` files, allowing you to change BBC file
-metadata (load address, execute address and attributes) from the
-command line.
 
 # text2bbc
 

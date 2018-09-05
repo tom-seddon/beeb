@@ -142,10 +142,6 @@ def main(options):
         dest_dir=os.path.join(dest_dir,
                               os.path.splitext(os.path.basename(options.fname))[0])
 
-        # # 65Link barfs if there's no drive 2, so always create both.
-        # mkdir(os.path.join(dest_dir,"0"))
-        # mkdir(os.path.join(dest_dir,"2"))
-
     # Load the image
     with open(options.fname,"rb") as f: image=Disc(num_sides,80,10,f.read())
 
