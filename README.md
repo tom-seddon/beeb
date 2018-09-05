@@ -4,17 +4,21 @@ A random grab bag of random bits for people that still use this
 classic 1980s UK computer.
 
 When using the BBC Micro, I use
-[65Link](http://web.inter.nl.net/users/J.Kortink/home/software/65link/) -
-a package that lets your PC act as a file server for the BBC Micro.
-This way, I can use the PC to edit and assemble files for immediate
-use on the BBC Micro. (For some information about this sort of
-workflow, see here:
-[BBC Micro Development Environment](http://www.tomseddon.plus.com/beeb/env.html).)
+[BeebLink](https://github.com/tom-seddon/beeblink), a package that
+lets your PC act as a file server for the BBC Micro. This way, I can
+use the PC to edit and assemble files for immediate use on the BBC
+Micro.
 
-65Link stores each BBC file as a loose file on your PC (plus an
-associated file that stores file attributes), so any tools here are
-likely to be oriented towards this way of working as opposed to one
-that involves creating disk images or what have you.
+BeebLink stores each BBC file as a loose file on your PC, plus an
+associated .inf file that stores file attributes, so the tools here
+are oriented towards this way of working as opposed to working
+directly with disk images. (There are also
+[other tools that work with this format](https://www.stairwaytohell.com/essentials/index.html?page=homepage).)
+
+(There are also a couple of tools that work with
+[John Kortink's 65Link](http://www.zeridajh.org/software/65link/index.htm),
+which works in a similar sort of way but with a different on-disk
+format.)
 
 The tools are briefly described here. For more info, run each with
 `-h` on the command line.
@@ -62,12 +66,13 @@ names conform to a pattern. There's no standard pattern, though, so
 you may have to just list them out in the `.gitattributes` file in
 each folder. Either way, it's worth the effort!
 
-# disc_conv
+# disk_conv
 
-Python 2.x script that converts a SSD or DSD disc image into 65Link
-files. Supply name of disk on command line; it will create a
-65Link-compatible folder in the same folder, named after the disc
-image.
+Python 2.x script that converts a SSD or DSD disc image into a folder
+suitable for use with BeebLink. Supply name of disk on command line;
+it will create a BeebLink-compatible folder in the same folder, named
+after the disc image. Alternatively, specify `-0` or `-2` to have it
+output files from side 0 or 2 straight into the folder specified.
 
 Specify the `-b` switch to have it find tokenized BBC BASIC files,
 convert them to text with `BBCBasicToText.py`, and save them to a
@@ -107,13 +112,12 @@ LEA files:
 
 # make_bbc_ssd
 
-Python 2.7 script that builds a single-sided disc image from 65Link
+Python 2.7 script that builds a single-sided disc image from .inf
 files.
 
-Supply list of files on the command line. Files with no extension are
-assumed to be 65Link files; they will be added to the disk image under
-their BBC name, using metadata from the corresponding .lea file if
-there is one.
+Supply list of files on the command line. Files that have a
+corresponding .inf file are assumed to be BBC files, and other files
+are ignored.
 
 # make_bbc_vol
 

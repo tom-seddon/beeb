@@ -36,55 +36,19 @@ def v(str):
 ##########################################################################
 ##########################################################################
 
-# 65 link attrs are 8 if locked
-
-convert_to_65link_char={
-    " ":"_sp",
-    "!":"_xm",
-    "\"":"_dq",
-    "#":"_ha",
-    "$":"_do",
-    "%":"_pc",
-    "&":"_am",
-    "'":"_sq",
-    "(":"_rb",
-    ")":"_lb",
-    "*":"_as",
-    "+":"_pl",
-    ",":"_cm",
-    "-":"_mi",
-    ".":"_pd",
-    "/":"_fs",
-    ":":"_co",
-    ";":"_sc",
-    "<":"_st",
-    "=":"_eq",
-    ">":"_lt",
-    "?":"_qm",
-    "@":"_at",
-    "[":"_hb",
-    "\\":"_bs",
-    "]":"_bh",
-    "^":"_po",
-    "_":"_un",
-    "`":"_bq",
-    "{":"_cb",
-    "|":"_ba",
-    "}":"_bc",
-    "~":"_no",
-}
-
 # \ / : * ? " < > |
-bad_windows_chars="\\=:*?\"<>|"
+quote_chars='/<>:"\\|?* .#'
 
-def convert_to_windows(beeb_name):
-    result=""
-    for c in beeb_name:
-        if c in bad_windows_chars:
-            result+=convert_to_65link_char[c]
-        else:
-            result+=c
-    return result
+def get_pc_name(bbc_name):
+    pc_name=''
+    for c in bbc_name:
+        if ord(c)<32 or ord(c)>126 or c in quote_chars:
+            pc_name+='#%02x'%ord(c)
+        else: pc_name+=c
+    return pc_name
+
+##########################################################################
+##########################################################################
 
 class Disc:
     def __init__(self,
@@ -112,14 +76,6 @@ class Disc:
                     count):
         return "".join([chr(x) for x in [self.read(side,track,sector,offset+i) for i in range(count)]])
 
-#     def write(self,
-#               side,
-#               track,
-#               sector,
-#               offset,
-#               value):
-#         self.data[self.get_index(side,track,sector,offset)]=value
-
     def get_index(self,
                   side,
                   track,
@@ -136,20 +92,24 @@ class Disc:
 
         return index
 
-# def load_ds_disc(name):
-#     f=open(name,"rb")
-#     data=f.read()
-#     f.close()
-
-#     return Disc(2,80,10,data)
-
+##########################################################################
+##########################################################################
+    
 def mkdir(dir_name):
-    try:
-        os.makedirs(dir_name)
-    except:
-        # assume it's nothing serious...
-        pass
+    "try to create folder, ignoring error"
+    try: os.makedirs(dir_name)
+    except: pass
 
+##########################################################################
+##########################################################################
+
+def mkdir_and_open(path,mode):
+    mkdir(os.path.split(path)[0])
+    return open(path,mode)
+
+##########################################################################
+##########################################################################
+    
 def main(options):
     global g_verbose
     g_verbose=options.verbose
@@ -166,10 +126,10 @@ def main(options):
 
     # Figure out disc sidedness.
     ext=os.path.splitext(options.fname)[1]
-    if os.path.normcase(ext)==os.path.normcase(".ssd"):
+    if ext.lower()=='.ssd':
         num_sides=1
         if options.drive2: fatal("disc image is single-sided")
-    elif os.path.normcase(ext)==os.path.normcase(".dsd"): num_sides=2
+    elif ext.lower()=='.dsd': num_sides=2
     else: fatal("unrecognised extension: %s"%ext)
 
     # Figure out where to put files.
@@ -182,9 +142,9 @@ def main(options):
         dest_dir=os.path.join(dest_dir,
                               os.path.splitext(os.path.basename(options.fname))[0])
 
-        # 65Link barfs if there's no drive 2, so always create both.
-        mkdir(os.path.join(dest_dir,"0"))
-        mkdir(os.path.join(dest_dir,"2"))
+        # # 65Link barfs if there's no drive 2, so always create both.
+        # mkdir(os.path.join(dest_dir,"0"))
+        # mkdir(os.path.join(dest_dir,"2"))
 
     # Load the image
     with open(options.fname,"rb") as f: image=Disc(num_sides,80,10,f.read())
@@ -267,9 +227,10 @@ def main(options):
                     
 
             # *INFO
+            locked_str="L" if locked else " "
             v("%s.%-7s %c %08X %08X %08X (T%d S%d)%s\n"%(dir,
                                                          name,
-                                                         "L" if locked else " ",
+                                                         locked_str,
                                                          load,
                                                          exec_,
                                                          length,
@@ -280,52 +241,48 @@ def main(options):
             #
             contents_str="".join([chr(x) for x in contents])
 
-            # Write 65link copy.
-            if options.drive0 or options.drive2: sfl_folder=dest_dir
-            else: sfl_folder=os.path.join(dest_dir,"%d"%drive)
+            # Write PC file.
+            if options.drive0 or options.drive2: pc_folder=dest_dir
+            else: pc_folder=os.path.join(dest_dir,"%d"%drive)
 
-            sfl_file_name="%s%s"%(convert_to_65link_char.get(dir,dir),
-                                  "".join([convert_to_65link_char.get(c,c) for c in name]))
-
-            f=open(os.path.join(sfl_folder,
-                                sfl_file_name)+".lea","wb")
-            f.write(struct.pack("<III",load,exec_,8 if locked else 0))
-            f.close()
-
-            f=open(os.path.join(sfl_folder,
-                                sfl_file_name),"wb")
-            f.write(contents_str)
-            f.close()
+            pc_name='%s.%s'%(get_pc_name(dir),get_pc_name(name))
+            pc_path=os.path.join(pc_folder,pc_name)
+            
+            with mkdir_and_open(pc_path+'.inf','wt') as f:
+                print>>f,'%s.%s %08x %08x %s'%(dir,
+                                               name,
+                                               load,
+                                               exec_,
+                                               locked_str)
+                
+            with mkdir_and_open(pc_path,"wb") as f: f.write(contents_str)
 
             # Write PC copy.
             if basic:
-                raw_folder=os.path.join(dest_dir,"raw/%d"%drive)
-                mkdir(raw_folder)
-                
-                raw_file_name="%s.%s"%(convert_to_windows(dir),
-                                       convert_to_windows(name))
+                raw_path=os.path.join(dest_dir,
+                                      'raw/%d'%drive,
+                                      pc_name)
                 
                 decoded=BBCBasicToText.DecodeLines(contents_str)
                 for wrap in [False]:
                     ext=".wrap.txt" if wrap else ".txt"
-                    f=open(os.path.join(raw_folder,
-                                        "%s%s"%(raw_file_name,ext)),
-                           "wb")
-                    # Produce output like the BASIC Editor (readability
-                    # not guaranteed)
-                    for num,text in decoded:
-                        wrapped=textwrap.wrap(text,64 if wrap else 65536)
-                        num_text="%5d "%num
-                        for i in range(len(wrapped)):
-                            print>>f,"%s%s"%(num_text if i==0 else " "*len(num_text),
-                                             wrapped[i])
-                    f.close()
+                    with mkdir_and_open(raw_path+ext,'wb') as f:
+                        # Produce output like the BASIC Editor (readability
+                        # not guaranteed)
+                        for num,text in decoded:
+                            wrap_width=64 if wrap else 65536
+                            wrapped=textwrap.wrap(wrap_width)
+                            num_text="%5d "%num
+                            for i in range(len(wrapped)):
+                                if i==0: prefix=num_text
+                                else: prefix=" "*len(num_text)
+                                print>>f,"%s%s"%(prefix,wrapped[i])
 
 ##########################################################################
 ##########################################################################
 
 if __name__=="__main__":
-    parser=argparse.ArgumentParser(description="make 65link folder from BBC disk image")
+    parser=argparse.ArgumentParser(description="make BeebLink folder from BBC disk image")
     
     parser.add_argument("-v",
                         "--verbose",

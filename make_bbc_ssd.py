@@ -27,58 +27,6 @@ def v(str):
 ##########################################################################
 ##########################################################################
 
-ascii_by_65link={
-    "_sp":" ",
-    "_xm":"!",
-    "_dq":"\"",
-    "_ha":"#",
-    "_do":"$",
-    "_pc":"%",
-    "_am":"&",
-    "_sq":"'",
-    "_rb":"(",
-    "_lb":")",
-    "_as":"*",
-    "_pl":"+",
-    "_cm":",",
-    "_mi":"-",
-    "_pd":".",
-    "_fs":"/",
-    "_co":":",
-    "_sc":";",
-    "_st":"<",
-    "_eq":"=",
-    "_lt":">",
-    "_qm":"?",
-    "_at":"@",
-    "_hb":"[",
-    "_bs":"\\",
-    "_bh":"]",
-    "_po":"^",
-    "_un":"_",
-    "_bq":"`",
-    "_cb":"{",
-    "_ba":"|",
-    "_bc":"}",
-    "_no":"~",
-}
-
-def get_bbc_name(x):
-    r=""
-    i=0
-    while i<len(x):
-        if x[i]=="_":
-           code=x[i:i+3]
-           if code not in ascii_by_65link: fatal("bad 65link name: %s"%x)
-           r+=ascii_by_65link[code]
-           i+=3
-        else:
-            r+=x[i]
-            i+=1
-        
-
-    return r
-
 def get_data(xs):
     data=""
     for x in xs:
@@ -93,6 +41,9 @@ def get_data(xs):
 
     return data
 
+##########################################################################
+##########################################################################
+
 # def get_size_sectors(size_bytes): return (size_bytes+255)//256
 
 class File: pass
@@ -106,17 +57,33 @@ def main(options):
     fnames=[]
     for pattern in options.fnames: fnames+=glob.glob(pattern)
     options.fnames=fnames
-    
+
     # Remove input files with an extension - this just makes it easier
     # to use from a POSIX-style shell.
-    options.fnames=[x for x in options.fnames if os.path.splitext(x)[1]==""]
+    options.fnames=[x for x in options.fnames if os.path.isfile(x+'.inf')]
 
-    # Basic options check.
-    if len(options.title)>12: fatal("title is too long - max 12 chars")
-    if len(options.fnames)>31: fatal("too many files - max 31")
+    # *TITLE setting.
+    title=''
+    if options.title is None:
+        title_name=os.path.join(options.dir,'.title')
+        if os.path.isfile(title_name):
+            with open(title_name,'rt') as f: title=f.readlines()[0][:12]
+    else:
+        if len(options.title)>12: fatal("title is too long - max 12 chars")
+        if len(options.fnames)>31: fatal("too many files - max 31")
+        title=options.title
 
-    options.opt4=int(options.opt4)
-    if not (options.opt4>=-1 and options.opt4<=3): fatal("bad *OPT4 value: %s"%options.opt4)
+    # *OPT4 setting.
+    opt4=0
+    if options.opt4 is None:
+        if options.dir is not None:
+            opt4_name=os.path.join(options.dir,'.opt4')
+            if os.path.isfile(opt4_name):
+                with open(opt4_name,'rb') as f: opt4=int(f.read()[0])&3
+    else:
+        if options.opt4<0 or options.opt4>3:
+            fatal("bad *OPT4 value: %s"%options.opt4)
+        opt4=options.opt4
 
     # How many usable sectors on this disc?
     num_disc_sectors=(40 if options._40 else 80)*10
@@ -129,20 +96,29 @@ def main(options):
     for fname in options.fnames:
         file=File()
 
-        file.bbc_name=get_bbc_name(os.path.split(fname)[1])
-        if len(file.bbc_name)>8: fatal("file name too long: %s"%fname)
+        with open(fname+'.inf','rt') as f: inf_data=f.readlines()[0].split()
+
+        if len(inf_data)<3: continue
+
+        file.bbc_name=inf_data[0]
+        if len(file.bbc_name)<3: continue
+        if file.bbc_name[1]!='.': continue
+        if len(file.bbc_name)>9: continue
+        file.bbc_name=file.bbc_name[0]+file.bbc_name[2:] # remove '.'
+
         with open(fname,"rb") as f: file.data=f.read()
 
-        file.load=0
-        file.exec_=0
+        file.load=int(inf_data[1],16)
+        file.exec_=int(inf_data[2],16)
+        
         file.locked=False
-
-        lea_fname=fname+".lea"
-        if os.path.isfile(lea_fname):
-            with open(lea_fname,"rb") as f: lea_data=f.read()
-            if len(lea_data)!=12: fatal("bad LEA file: %s"%lea_fname)
-            file.load,file.exec_,a=struct.unpack("<III",lea_data)
-            file.locked=(a&8)!=0
+        if len(inf_data)>=4:
+            if inf_data[3].lower()=='l': file.locked=True
+            else:
+                try:
+                    attr=int(inf_data[3],16)
+                    file.locked=(attr&8)!=0
+                except ValueError: pass
 
         file.sector=next_sector
         file.size_sectors=(len(file.data)+255)//256
@@ -167,14 +143,14 @@ def main(options):
              [0]*256]
 
     # Store title.
-    for i in range(len(options.title)):
-        if i<8: sectors[0][i]=options.title[i]
-        else: sectors[1][i-8]=options.title[i]
+    for i in range(len(title)):
+        if i<8: sectors[0][i]=title[i]
+        else: sectors[1][i-8]=title[i]
 
     # Store metadata.
     sectors[1][4]=0                 # Disk write count
     sectors[1][5]=len(files)*8
-    sectors[1][6]=((options.opt4<<4)|
+    sectors[1][6]=((opt4<<4)|
                    ((num_disc_sectors>>8)&3))
     sectors[1][7]=num_disc_sectors&255
 
@@ -222,7 +198,7 @@ def main(options):
 ##########################################################################
 
 if __name__=="__main__":
-    parser=argparse.ArgumentParser(description="make SSD disc image from 65link folder")
+    parser=argparse.ArgumentParser(description="make SSD disc image from .inf folder")
 
     parser.add_argument("-v",
                         "--verbose",
@@ -239,13 +215,19 @@ if __name__=="__main__":
                         "--title",
                         metavar="TITLE",
                         default="",
-                        help="use TITLE as disc title")
+                        help="use %(metavar)s as disc title (overrides --dir)")
 
     parser.add_argument("-4",
                         "--opt4",
                         metavar="VALUE",
-                        default=0,
-                        help="set *OPT4 option to VALUE")
+                        default=None,
+                        help="set *OPT4 option to %(metavar)s (overrides --dir)")
+
+    parser.add_argument('-d',
+                        '--dir',
+                        metavar='PATH',
+                        default=None,
+                        help='if specified, read *OPT4 and title settings from BeebLink folder %(metavar)s (title will be silently truncated if too long)')
 
     parser.add_argument("-o",
                         dest="output_fname",
@@ -258,7 +240,7 @@ if __name__=="__main__":
                         metavar="FILE",
                         #action="append",
                         default=[],
-                        help="65link file(s) to put in disc image (if list includes .LEA files, they will be ignored)")
+                        help="file(s) to put in disc image (non-BBC files will be ignored)")
     
     args=sys.argv[1:]
 
