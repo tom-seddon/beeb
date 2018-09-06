@@ -152,12 +152,22 @@ def main(options):
     for side in sides:
         drive=side*2
 
-        title=(image.read_string(side,0,0,0,8)+image.read_string(side,0,1,0,4)).replace(chr(0),"")
+        title=(image.read_string(side,0,0,0,8)+image.read_string(side,0,1,0,4)).replace(chr(0),"").strip()
 
         num_files=image.read(side,0,1,5)>>3
         option=(image.read(side,0,1,6)>>4)&3
 
         v("Side %d: \"%s\": Option %d, %d files\n"%(side,title,option,num_files))
+
+        # Write PC file.
+        if options.drive0 or options.drive2: pc_folder=dest_dir
+        else: pc_folder=os.path.join(dest_dir,"%d"%drive)
+
+        if title!='':
+            with mkdir_and_open(os.path.join(pc_folder,'.title'),'wt') as f: print>>f,title
+
+        if option!=0:
+            with mkdir_and_open(os.path.join(pc_folder,'.opt4'),'wt') as f: print>>f,option
 
         for file_idx in range(num_files):
             offset=8+file_idx*8
@@ -236,10 +246,6 @@ def main(options):
 
             #
             contents_str="".join([chr(x) for x in contents])
-
-            # Write PC file.
-            if options.drive0 or options.drive2: pc_folder=dest_dir
-            else: pc_folder=os.path.join(dest_dir,"%d"%drive)
 
             pc_name='%s.%s'%(get_pc_name(dir),get_pc_name(name))
             pc_path=os.path.join(pc_folder,pc_name)
