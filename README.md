@@ -61,25 +61,13 @@ names conform to a pattern. There's no standard pattern, though, so
 you may have to just list them out in the `.gitattributes` file in
 each folder. Either way, it's worth the effort!
 
-# disk_conv
-
-Python 2.x script that converts a SSD or DSD disc image into a folder
-suitable for use with BeebLink. Supply name of disk on command line;
-it will create a BeebLink-compatible folder in the same folder, named
-after the disc image. Alternatively, specify `-0` or `-2` to have it
-output files from side 0 or 2 straight into the folder specified.
-
-Specify the `-b` switch to have it find tokenized BBC BASIC files,
-convert them to text with `BBCBasicToText.py`, and save them to a
-separate `raw` folder.
-
 # dump_bbc_rom_info
 
 Simple tool that scans sideways ROM headers and prints info to stdout.
 I used this to have a quick look at [Wouter Scholten's monster ROM
 archive](http://wouter.bbcmicro.net/bbc/bbc-software.html).
 
-# make_bbc_ssd
+# ssd_create
 
 Python 2.7 script that builds a single-sided disc image from .inf
 files.
@@ -87,6 +75,19 @@ files.
 Supply list of files on the command line. Files that have a
 corresponding .inf file are assumed to be BBC files, and other files
 are ignored.
+
+# ssd_extract
+
+Python 2.x script that converts a SSD or DSD disc image into a folder
+of .inf files suitable for use with BeebLink. Supply name of disk on
+command line; it will create a BeebLink-compatible folder in the same
+folder, named after the disc image. Alternatively, specify `-0` or
+`-2` to have it output files from side 0 or 2 straight into the folder
+specified.
+
+Specify the `-b` switch to have it find tokenized BBC BASIC files,
+convert them to text with `BBCBasicToText.py`, and save them to a
+separate `raw` folder.
 
 # screen_conv
 
