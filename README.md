@@ -105,6 +105,32 @@ MODE4 grab, `-p 13` to specify yellow on red.)
 (Maybe one day I'll figure out how to make animated GIFs so that
 flashing colours can be supported.)
 
+# smload_join
+
+Join a service ROM and
+[relocatable modules](http://mdfs.net/Software/BBC/Modules/ModWriting),
+creating a new ROM image.
+
+(Note that while this will consume modules produced by JGH's tools, I
+haven't tested its interaction with `*SMLoad` (etc.) - I just use this
+to create new standalone ROMs.)
+
+[Example use](https://github.com/tom-seddon/beeblink/blob/5c13bcc5fd6d07d2d656df4129ef1fe694723fe8/rom/Makefile#L16).
+
+# smload_make_reloc
+
+Make a
+[relocatable module](http://mdfs.net/Software/BBC/Modules/ModWriting)
+from a service ROM.
+
+Assemble the service ROM twice, once at $8000 (a valid ROM image that
+you might actually use) and once at $8100 (not a valid ROM), and
+supply both files to this tool. The output is a valid ROM with a
+relocation table that can be used by `smload_join`, and ought to work
+with [JGH's tools](http://mdfs.net/Software/BBC/Modules/) too.
+
+[Example use](https://github.com/tom-seddon/startup_rom/blob/4193e31aff25d22b59f6ab099613ae7cedbe011c/Makefile#L13).
+
 # text2bbc
 
 Along the lines of [`dos2unix`](https://linux.die.net/man/1/dos2unix),
