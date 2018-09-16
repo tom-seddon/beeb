@@ -221,6 +221,7 @@ if __name__=="__main__":
                         "--opt4",
                         metavar="VALUE",
                         default=None,
+                        type=int,
                         help="set *OPT4 option to %(metavar)s (overrides --dir)")
 
     parser.add_argument('-d',
