@@ -46,7 +46,7 @@ def get_data(xs):
 
 # def get_size_sectors(size_bytes): return (size_bytes+255)//256
 
-class File: pass
+class BeebFile: pass
 
 def main(options):
     global g_verbose
@@ -70,8 +70,16 @@ def main(options):
             with open(title_name,'rt') as f: title=f.readlines()[0][:12]
     else:
         if len(options.title)>12: fatal("title is too long - max 12 chars")
-        if len(options.fnames)>31: fatal("too many files - max 31")
+        # if len(options.fnames)>31: fatal("too many files - max 31")
         title=options.title
+
+    renames={}
+    for rename in options.renames:
+        if rename[0].lower() in renames:
+            fatal('duplicated rename: %s'%rename[0])
+            
+        renames[rename[0].lower()]=rename[1]
+    renamed=set()
 
     # *OPT4 setting.
     opt4=0
@@ -88,22 +96,39 @@ def main(options):
     # How many usable sectors on this disc?
     num_disc_sectors=(40 if options._40 else 80)*10
     v("%d sector(s) on disc\n"%num_disc_sectors)
-    
+
     # Load all files in.
     files=[]
     next_sector=2
     v("%d file(s):\n"%len(options.fnames))
     for fname in options.fnames:
-        file=File()
+        file=BeebFile()
 
         with open(fname+'.inf','rt') as f: inf_data=f.readlines()[0].split()
 
         if len(inf_data)<3: continue
 
         file.bbc_name=inf_data[0]
-        if len(file.bbc_name)<3: continue
-        if file.bbc_name[1]!='.': continue
-        if len(file.bbc_name)>9: continue
+
+        # Handle the rename before checking for validity.
+        new_bbc_name=renames.get(file.bbc_name.lower())
+        if new_bbc_name is not None:
+            renamed.add(file.bbc_name.lower())
+            v('Rename: %s -> %s\n'%(file.bbc_name,new_bbc_name))
+            file.bbc_name=new_bbc_name
+        
+        if len(file.bbc_name)<3:
+            print>>sys.stderr,'NOTE: Ignoring %s: BBC name too short: %s'%(fname,file.bbc_name)
+            continue
+        
+        if file.bbc_name[1]!='.':
+            print>>sys.stderr,'NOTE: Ignoring %s: BBC name not a DFS-style name: %s'%(fname,file.bbc_name)
+            continue
+        
+        if len(file.bbc_name)>9:
+            print>>sys.stderr,'NOTE: Ignoring %s: BBC name too long: %s'%(fname,file.bbc_name)
+            continue
+        
         file.bbc_name=file.bbc_name[0]+file.bbc_name[2:] # remove '.'
 
         with open(fname,"rb") as f: file.data=f.read()
@@ -133,6 +158,8 @@ def main(options):
         v(" @%d"%file.sector)
 
         v("\n")
+
+        if len(files)==31: fatal('Too many files')
 
         files.append(file)
 
@@ -193,6 +220,11 @@ def main(options):
     if options.output_fname is not None:
         with open(options.output_fname,"wb") as f: f.write(image)
         
+    if len(renamed)!=len(renames):
+        print>>sys.stderr,'WARNING: Some renames were redundant:'
+        for key,val in renames.iteritems():
+            if key not in renamed:
+                print>>sys.stderr,'    %s -> %s'%(key,val)
 
 ##########################################################################
 ##########################################################################
@@ -236,8 +268,16 @@ if __name__=="__main__":
                         default=None,
                         help="write result to FILE")
 
+    parser.add_argument('-r',
+                        dest='renames',
+                        metavar=('OLD-BBC-NAME','NEW-BBC-NAME'),
+                        nargs=2,
+                        action='append',
+                        default=[],
+                        help='while adding, rename OLD-BBC-NAME to NEW-BBC-NAME')
+
     parser.add_argument("fnames",
-                        nargs="+",
+                        nargs="*",
                         metavar="FILE",
                         #action="append",
                         default=[],
