@@ -301,11 +301,12 @@ if __name__=="__main__":
                             action="store_true",
                             help="find tokenized BASIC source files and save text copies")
                         
-    parser.add_argument("-d",
-                        "--dest-dir",
-                        default=None,
+    parser.add_argument("-o",
+                        "--output-dir",
+                        dest='dest_dir',
+                        default='.',
                         metavar="DIR",
-                        help="where to put files (will use disc image folder if not specified)")
+                        help="where to put files. Default: %(default)s")
 
     parser.add_argument("-0",
                         default=None,

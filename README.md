@@ -131,8 +131,8 @@ with [JGH's tools](http://mdfs.net/Software/BBC/Modules/) too.
 
 [Example use](https://github.com/tom-seddon/startup_rom/blob/4193e31aff25d22b59f6ab099613ae7cedbe011c/Makefile#L13).
 
-# text2bbc
+# text2bbc, bbc2text
 
 Along the lines of [`dos2unix`](https://linux.die.net/man/1/dos2unix),
-converts files from modern standard line endings (lines ending with
-LF, or, on Windows, CR+LF) to BBC-style ones (lines ending with CR).
+convert files between modern standard line endings (lines ending with
+LF, or, on Windows, CR+LF) and BBC-style ones (lines ending with CR).
