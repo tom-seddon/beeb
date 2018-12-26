@@ -1,5 +1,5 @@
 #!env python
-import os,os.path,sys,argparse,PIL.Image,collections
+import os,os.path,sys,argparse,png,collections
 emacs=os.getenv("EMACS") is not None
 
 ##########################################################################
@@ -41,34 +41,35 @@ def get_palette_indexes(value,bpp):
         
     return result
 
-def get_rgb(phys): return (255 if phys&1 else 0,255 if phys&2 else 0,255 if phys&4 else 0)
-
-ModeDef=collections.namedtuple("ModeDef","bpp palette")
+ModeDef=collections.namedtuple("ModeDef",
+                               "pc_width_scale default_palette num_columns row_height")
 
 def main(options):
     global g_verbose
     g_verbose=options.verbose
 
-    if options.mode<0 or options.mode>6: fatal("unsupported MODE: %d"%options.mode)
+    modes=[
+        ModeDef(1,[0,7],80,8),     # 0
+        ModeDef(2,[0,1,3,7],80,8), # 1
+        ModeDef(4,[0,1,2,3,4,5,6,7,0,1,2,3,4,5,6,7],80,8), # 2
+        ModeDef(1,[0,7],80,10),     # 3
+        ModeDef(2,[0,7],40,8),     # 4
+        ModeDef(4,[0,1,3,7],40,8), # 5
+        ModeDef(2,[0,7],40,10), # 6
+    ]
+    if options.mode<0 or options.mode>len(modes): fatal("unsupported MODE: %d"%options.mode)
+    mode=modes[options.mode]
 
-    palettes={
-        1:[0,7],
-        2:[0,1,3,7],
-        4:range(8)*2,
-    }
+    if len(mode.default_palette)==2: bpp=1
+    elif len(mode.default_palette)==4: bpp=2
+    elif len(mode.default_palette)==16: bpp=4
+    else: assert False,mode.default_palette
 
-    # Get mode properties.
-    bpp=[ 1,2,4,1,1,2,1][options.mode]
-    fast=options.mode<4
-
-    # Decide on 6845 column count.
-    if options.num_columns is None:
-        if fast: num_columns=80
-        else: num_columns=40
-    else: num_columns=options.num_columns
+    # Decide on screen dimensions.
+    num_columns=mode.num_columns if options.num_columns is None else options.num_columns
 
     # Decide on palette.
-    palette=palettes[bpp]
+    palette=mode.default_palette[:]
     if options.palette is not None:
         if len(options.palette)!=len(palette): fatal("wrong palette size - must be %d"%len(palette))
 
@@ -76,33 +77,51 @@ def main(options):
             if c not in "01234567": fatal("bad colour in palette: %c"%c)
 
         palette=[int(c) for c in options.palette]
+
+    palette=[(0 if (c&1)==0 else 255,
+              0 if (c&2)==0 else 255,
+              0 if (c&4)==0 else 255) for c in palette]
+
+    # Allocate a palette entry for the mode 3/6 gaps.
+    blank_index=None
+    if mode.row_height>8:
+        blank_index=len(palette)
+        palette.append((0,0,0))
         
     v("Palette: %s\n"%palette)
 
     # Read image data.
     with open(options.fname,"rb") as f: data=[ord(x) for x in f.read()]
-
     data=data[options.offset:]
     if options.count is not None: data=data[:options.count]
 
-    # Image must have an exact number of 6845 character rows.
+    # Image must match the 6845 dimensions.
     stride=num_columns*8
     if len(data)%stride!=0: fatal("image data not a multiple of stride %d"%stride)
     num_rows=len(data)/stride
 
     # Convert.
-    image=PIL.Image.new("RGB",(num_columns*8/bpp,num_rows*8))
-    for row in range(num_rows):
-        for y in range(8):
-            offset=row*num_columns*8+y
-            indexes=[]
-            for x in range(num_columns): indexes+=get_palette_indexes(data[offset+x*8],bpp)
-            #v("%s\n"%indexes)
-            for x in range(len(indexes)): image.putpixel((x,row*8+y),get_rgb(palette[indexes[x]]))
+    width_scale=mode.pc_width_scale if options.pc else 1
+    image=[]
+    for row_idx in range(num_rows):
+        for scanline_idx in range(mode.row_height):
+            row=[]
+            if scanline_idx>=8:
+                assert blank_index is not None
+                row=num_columns*(8//bpp)*[blank_index]
+            else:
+                offset=row_idx*num_columns*8+scanline_idx
+                for x in range(num_columns):
+                    byte_indexes=get_palette_indexes(data[offset+x*8],bpp)
+                    for index in byte_indexes:
+                        for j in range(width_scale): row.append(index)
 
-    if options.resize: image=image.resize((640,512),PIL.Image.NEAREST)
+            if options.pc: image.append(row[:])
+            image.append(row)
 
-    if options.output_fname is not None: image.save(options.output_fname)
+    if options.output_fname is not None:
+        with open(options.output_fname,'wb') as f:
+            png.Writer(len(image[0]),len(image),palette=palette).write(f,image)
 
 ##########################################################################
 ##########################################################################
@@ -130,10 +149,9 @@ if __name__=="__main__":
                         default=None,
                         help="file to save image to")
 
-    parser.add_argument("-r",
-                        "--resize",
+    parser.add_argument("--pc",
                         action="store_true",
-                        help="resize image to 640x512")
+                        help="resize image to ~640x512, for use on a PC")
 
     parser.add_argument("-p",
                         "--palette",

@@ -89,11 +89,9 @@ Specify the `-b` switch to have it find tokenized BBC BASIC files,
 convert them to text with `BBCBasicToText.py`, and save them to a
 separate `raw` folder.
 
-# screen_conv
+# bbc2png
 
 Python 2.7 script that converts a BBC screen dump into an image.
-
-Dependencies: PIL
 
 Supply name on command line of dump of screen RAM (as saved by, e.g.,
 `*SAVE X FFFF3000+5000`) and MODE the dump was taken from. Use `-o` to
