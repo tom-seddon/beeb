@@ -1,4 +1,4 @@
-#!env python
+#!/usr/bin/python
 import argparse,os,os.path,sys,struct,glob
 emacs=os.getenv("EMACS") is not None
 
@@ -104,7 +104,15 @@ def main(options):
     for fname in options.fnames:
         file=BeebFile()
 
-        with open(fname+'.inf','rt') as f: inf_data=f.readlines()[0].split()
+        with open(fname+'.inf','rt') as f:
+            inf_lines=f.readlines()
+            if len(inf_lines)==0:
+                # Bodge.
+                inf_data=[os.path.basename(fname),
+                          'ffffffff',
+                          'ffffffff']
+            else:
+                inf_data=inf_lines[0].split()
 
         if len(inf_data)<3: continue
 
