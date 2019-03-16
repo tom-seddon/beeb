@@ -7,8 +7,8 @@ import os,os.path,sys,collections,argparse,glob
 ##########################################################################
 
 def fatal(str):
-    sys.stderr.write("FATAL: %s"%str)
-    if str[-1]!='\n': sys.stderr.write("\n")
+    sys.stderr.write('FATAL: %s'%str)
+    if str[-1]!='\n': sys.stderr.write('\n')
     
     if emacs: raise RuntimeError
     else: sys.exit(1)
@@ -74,11 +74,15 @@ class BeebDir:
     def __init__(self,
                  parent,
                  name,
-                 items=[]):
+                 title):
+        self._title=title
         self._parent=parent
         self._name=name
         self._items=[]
         self._name_map={}
+
+    @property
+    def title(self): return self._title
 
     @property
     def name(self): return self._name
@@ -254,6 +258,10 @@ class ADFSImageBuilder:
 
         assert value==0
 
+    def _set_str(self,arr,idx,value):
+        assert isinstance(value,str)
+        for i in range(len(value)): arr[idx+i]=ord(value[i])
+
     def _check(self):
         assert len(self._sectors)<=self._max_num_sectors
         # for i,s in enumerate(self._sectors):
@@ -353,7 +361,10 @@ class ADFSImageBuilder:
         assert idx<=0x4cb
 
         # fill in small directory footer.
-        for i in range(len(dir.name)): data[0x4cc+i]=ord(dir.name[i])
+        self._set_str(data,0x4cc,dir.name)
+        if dir.title is not None:
+            self._set_str(data,0x4d9,dir.title)
+            
         self._set_le(data,0x4d6,3,parent_dir_sector_idx)
 
         # copy header to footer.
@@ -387,12 +398,42 @@ def get_formats_text():
 
     return ', '.join(formats)
 
+##########################################################################
+##########################################################################
+
 def main(options):
     global g_verbose ; g_verbose=options.verbose
 
     format=g_adfs_formats.get(options.type.upper())
     if format is None: fatal('unknown ADFS format: %s'%options.type)
 
+    # *TITLE.
+    max_title_len=19
+    if options.title is None:
+        if options.dir is not None:
+            title_path=os.path.join(options.dir,'.title')
+            if os.path.isfile(title_path):
+                with open(title_path,'rt') as f:
+                    options.title=f.readlines()[0][:max_title_len]
+        if options.title is None: options.title=''
+    else:
+        if len(options.title)>max_title_len:
+            fatal('title is too long - max %d chars'%max_title_len)
+
+    # *OPT4
+    if options.opt4 is None:
+        if options.dir is not None:
+            opt4_path=os.path.join(options.dir,'.opt4')
+            if os.path.isfile(opt4_path):
+                with open(opt4_path,'rb') as f:
+                    options.opt4=int(f.read()[0])&3
+        if options.opt4 is None: options.opt4=0
+    else:
+        if options.opt4<0 or options.opt4>3:
+            fatal("bad *OPT4 value: %s"%options.opt4)
+
+                
+    # Disk identifier.
     if options.disk_id is None:
         options.disk_id=ord(os.urandom(1))|ord(os.urandom(1))<<8
     else:
@@ -401,7 +442,7 @@ def main(options):
 
     beeb_files=find_beeb_files(options)
 
-    root_dir=BeebDir(None,'$')
+    root_dir=BeebDir(None,'$',options.title)
 
     # Form ADFS tree structure.
     for f in beeb_files:
@@ -441,20 +482,24 @@ def main(options):
 # http://stackoverflow.com/questions/25513043/python-argparse-fails-to-parse-hex-formatting-to-int-type
 def auto_int(x): return int(x,0)
 
-if __name__=="__main__":
-    parser=argparse.ArgumentParser(description="make ADFS disk image from .inf folder")
+if __name__=='__main__':
+    parser=argparse.ArgumentParser(description='make ADFS disk image from .inf folder')
 
-    parser.add_argument("-v","--verbose",action="store_true",help="be more verbose")
+    parser.add_argument('-v','--verbose',action='store_true',help='be more verbose')
     
     parser.add_argument('-o','--output',dest='output_path',default=None,metavar='FILE',help='write ADFS disk image to %(metavar)s')
 
     parser.add_argument('--disk-id',metavar='ID',type=auto_int,default=None,help='set disk identifier to %(metavar)s (default is random)')
 
-    parser.add_argument('-4','--opt4',metavar='VALUE',default=0,type=int,help='set *OPT4 option to %(metavar)s')
+    parser.add_argument('-4','--opt4',metavar='VALUE',default=None,type=int,help='set *OPT4 option to %(metavar)s (overrides --dir)')
 
-    parser.add_argument('-t','--type',metavar='TYPE',default='L',help='specify ADFS format - %(metavar)s can be one of: '+get_formats_text()+'. Default: %(default)s')
-    
-    parser.add_argument("fnames",nargs="*",metavar="FILE",default=[],help="file(s) to put in disk image (non-BBC files will be ignored)")
+    parser.add_argument('--title',metavar='TITLE',default=None,help='use %(metavar)s as disc title (overrides --dir)')
+
+    parser.add_argument('--type',metavar='TYPE',default='L',help='specify ADFS format - %(metavar)s can be one of: '+get_formats_text()+'. Default: %(default)s')
+
+    parser.add_argument('--dir',metavar='PATH',default=None,help='if specified, read *OPT4 and title settings from BeebLink folder %(metavar)s (title will be silently truncated if too long)')
+
+    parser.add_argument('fnames',nargs='*',metavar='FILE',default=[],help='file(s) to put in disk image (non-BBC files will be ignored)')
 
     args=sys.argv[1:]
     options=parser.parse_args(args)
