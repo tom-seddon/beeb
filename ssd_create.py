@@ -93,13 +93,15 @@ def main(options):
             fatal("bad *OPT4 value: %s"%options.opt4)
         opt4=options.opt4
 
+    if len(options.build)>0:
+        opt4=3
+
     # How many usable sectors on this disc?
     num_disc_sectors=(40 if options._40 else 80)*10
     v("%d sector(s) on disc\n"%num_disc_sectors)
 
     # Load all files in.
     files=[]
-    next_sector=2
     v("%d file(s):\n"%len(options.fnames))
     for fname in options.fnames:
         file=BeebFile()
@@ -137,6 +139,11 @@ def main(options):
             print>>sys.stderr,'NOTE: Ignoring %s: BBC name too long: %s'%(fname,file.bbc_name)
             continue
         
+        if len(options.build)>0:
+            if file.bbc_name.lower()=='$.!boot':
+                print>>sys.stderr,'NOTE: Ignoring specified $.!BOOT file due to --build'
+                continue
+
         file.bbc_name=file.bbc_name[0]+file.bbc_name[2:] # remove '.'
 
         with open(fname,"rb") as f: file.data=f.read()
@@ -153,6 +160,24 @@ def main(options):
                     file.locked=(attr&8)!=0
                 except ValueError: pass
 
+        files.append(file)
+
+    # Add a manually-specified !BOOT, if necessary.
+    if len(options.build)>0:
+        file=BeebFile()
+
+        file.bbc_name='$!BOOT'
+        file.load=0xffffffff
+        file.exec_=0xffffffff
+        file.locked=False
+
+        file.data=''
+        for line in options.build: file.data+=line+'\r'
+
+        files.append(file)
+
+    next_sector=2
+    for file in files:
         file.sector=next_sector
         file.size_sectors=(len(file.data)+255)//256
         next_sector+=file.size_sectors
@@ -167,11 +192,11 @@ def main(options):
 
         v("\n")
 
-        if len(files)==31: fatal('Too many files')
+    if len(files)>31:
+        fatal('Too many files - disk has %d files, but max is 31'%len(files))
 
-        files.append(file)
-
-    if next_sector>num_disc_sectors-2: fatal("Too much data - disk has %d sectors, but files use %d sectors"%(num_disc_sectors,next_sector))
+    if next_sector>num_disc_sectors-2:
+        fatal("Too much data - disk has %d sectors, but files use %d sectors"%(num_disc_sectors,next_sector))
 
     # Create catalogue.
     sectors=[[0]*8+[" "]*248,
@@ -283,6 +308,12 @@ if __name__=="__main__":
                         action='append',
                         default=[],
                         help='while adding, rename OLD-BBC-NAME to NEW-BBC-NAME')
+
+    parser.add_argument('-b',
+                        '--build',
+                        action='append',
+                        default=[],
+                        help='add line to $.!BOOT. Implies --opt4=3 and overries any $.!BOOT file specified')
 
     parser.add_argument("fnames",
                         nargs="*",
