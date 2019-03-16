@@ -134,3 +134,11 @@ with [JGH's tools](http://mdfs.net/Software/BBC/Modules/) too.
 Along the lines of [`dos2unix`](https://linux.die.net/man/1/dos2unix),
 convert files between modern standard line endings (lines ending with
 LF, or, on Windows, CR+LF) and BBC-style ones (lines ending with CR).
+
+# adf_create
+
+Create an ADFS disk image from a folder of DFS-style .inf files.
+
+Files in `$` will be placed in the ADFS root, and additional
+directories will be created to hold DFS files in other directories as
+required.
