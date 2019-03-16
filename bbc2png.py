@@ -42,20 +42,20 @@ def get_palette_indexes(value,bpp):
     return result
 
 ModeDef=collections.namedtuple("ModeDef",
-                               "pc_width_scale default_palette num_columns row_height")
+                               "pc_width_scale pc_height_scale default_palette num_columns row_height")
 
 def main(options):
     global g_verbose
     g_verbose=options.verbose
 
     modes=[
-        ModeDef(1,[0,7],80,8),     # 0
-        ModeDef(2,[0,1,3,7],80,8), # 1
-        ModeDef(4,[0,1,2,3,4,5,6,7,0,1,2,3,4,5,6,7],80,8), # 2
-        ModeDef(1,[0,7],80,10),     # 3
-        ModeDef(2,[0,7],40,8),     # 4
-        ModeDef(4,[0,1,3,7],40,8), # 5
-        ModeDef(2,[0,7],40,10), # 6
+        ModeDef(1,2,[0,7],80,8),     # 0
+        ModeDef(1,1,[0,1,3,7],80,8), # 1
+        ModeDef(2,1,[0,1,2,3,4,5,6,7,0,1,2,3,4,5,6,7],80,8), # 2
+        ModeDef(1,2,[0,7],80,10),     # 3
+        ModeDef(1,1,[0,7],40,8),     # 4
+        ModeDef(2,1,[0,1,3,7],40,8), # 5
+        ModeDef(1,1,[0,7],40,10), # 6
     ]
     if options.mode<0 or options.mode>len(modes): fatal("unsupported MODE: %d"%options.mode)
     mode=modes[options.mode]
@@ -102,6 +102,7 @@ def main(options):
 
     # Convert.
     width_scale=mode.pc_width_scale if options.pc else 1
+    height_scale=mode.pc_height_scale if options.pc else 1
     image=[]
     for row_idx in range(num_rows):
         for scanline_idx in range(mode.row_height):
@@ -116,8 +117,7 @@ def main(options):
                     for index in byte_indexes:
                         for j in range(width_scale): row.append(index)
 
-            if options.pc: image.append(row[:])
-            image.append(row)
+            for i in range(height_scale): image.append(row)
 
     if options.output_fname is not None:
         with open(options.output_fname,'wb') as f:
@@ -151,7 +151,7 @@ if __name__=="__main__":
 
     parser.add_argument("--pc",
                         action="store_true",
-                        help="resize image to ~640x512, for use on a PC")
+                        help="resize image to a sensible aspect ratio for a PC")
 
     parser.add_argument("-p",
                         "--palette",
