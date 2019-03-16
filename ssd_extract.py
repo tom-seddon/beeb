@@ -1,4 +1,4 @@
-#!env python
+#!/usr/bin/python
 import sys,argparse,struct,textwrap,os,os.path
 emacs=os.getenv("EMACS") is not None
 
