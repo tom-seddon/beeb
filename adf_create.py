@@ -91,9 +91,7 @@ class BeebDir:
         if self._parent is None: return self.name
         else: return self._parent.get_name()+'.'+self.name
 
-    def get_sorted_items(self):
-        return sorted(self._items[:],
-                      lambda a,b: cmp(a.name.upper(),b.name.upper()))
+    def get_items(self): return self._items[:]
 
     def add_file(self,f):
         assert isinstance(f,BeebFile)
@@ -133,7 +131,16 @@ class BeebDir:
 
 ##########################################################################
 ##########################################################################
-    
+
+def get_file_address(addr_str):
+    addr=int(addr_str,16)
+
+    # Bodge for 6-digit DFS addresses.
+    if len(addr_str)==6:
+        if (addr&0xff0000)==0xff0000: addr|=0xffff0000
+
+    return addr
+
 def create_beeb_file(fname,inf_data):
     if len(inf_data[0])<3:
         print>>sys.stderr,'NOTE: Ignoring %s: BBC name too short: %s'%(fname,inf_data[0])
@@ -162,9 +169,22 @@ def create_beeb_file(fname,inf_data):
                     data,
                     inf_data[0][0],
                     inf_data[0][2:],
-                    int(inf_data[1],16),
-                    int(inf_data[2],16),
+                    get_file_address(inf_data[1]),
+                    get_file_address(inf_data[2]),
                     locked)
+
+##########################################################################
+##########################################################################
+
+def get_unique_paths(paths):
+    abs_paths=[os.path.normcase(os.path.abspath(path)) for path in paths]
+    abs_paths_seen=set()
+    result=[]
+    for i,abs_path in enumerate(abs_paths):
+        if abs_path not in abs_paths_seen:
+            result.append(paths[i])
+            abs_paths_seen.add(abs_path)
+    return result
 
 ##########################################################################
 ##########################################################################
@@ -177,6 +197,8 @@ def find_beeb_files(options):
 
     # Remove anything that doesn't have a .inf file.
     fnames=[x for x in fnames if os.path.isfile(x+'.inf')]
+
+    fnames=get_unique_paths(fnames)
 
     beeb_files=[]
     for fname in fnames:
@@ -196,6 +218,12 @@ def find_beeb_files(options):
 ##########################################################################
 
 ADFSImage=collections.namedtuple('ADFSImage','sectors num_files num_dirs num_bytes num_used_sectors')
+
+# ITEM is BeebDir or BeebFile; DATA is the 0x1a bytes of ADFS
+# catalogue data. The catalogue entries are Inreated the order
+# specified, then sorted by name just before the directory data is put
+# together.
+CatalogueEntry=collections.namedtuple('CatalogueEntry','item data')
 
 # this should really just be a function, but Python's scoping is too
 # annoying...
@@ -318,47 +346,53 @@ class ADFSImageBuilder:
     def _append_dir(self,dir,parent_dir_sector_idx):
         self._num_dirs+=1
         
-        items=dir.get_sorted_items()
-
         # book 5 sectors for this directory.
         dir_sector_idx=len(self._sectors)
         for i in range(5): self._add_sector(None)
 
-        # initially create as flat array of 5 sectors.
-        data=5*256*[0]
+        entries=[]
+        for item in dir.get_items():
+            entry=CatalogueEntry(item,0x1a*[0])
+            entries.append(entry)
 
-        data[1]=ord('H')
-        data[2]=ord('u')
-        data[3]=ord('g')
-        data[4]=ord('o')
+            for i in range(len(entry.item.name)):
+                entry.data[i]=ord(entry.item.name[i])
 
-        idx=5
-        for item in items:
-            for i in range(len(item.name)): data[idx+i]=ord(item.name[i])
-
-            data[idx+0]|=0x80   # readable
+            entry.data[0]|=0x80   # readable
 
             if isinstance(item,BeebFile):
-                if not item.locked: data[idx+1]|=0x80 # writeable
-                self._set_le(data,idx+0x0a,4,item.load_addr)
-                self._set_le(data,idx+0x0e,4,item.exec_addr)
-                self._set_le(data,idx+0x12,4,len(item.data))
-                self._set_le(data,idx+0x16,3,self._append_file(item))
+                if not item.locked: entry.data[1]|=0x80 # writeable
+                self._set_le(entry.data,0x0a,4,item.load_addr)
+                self._set_le(entry.data,0x0e,4,item.exec_addr)
+                self._set_le(entry.data,0x12,4,len(item.data))
+                self._set_le(entry.data,0x16,3,self._append_file(entry.item))
             elif isinstance(item,BeebDir):
-                data[idx+3]|=0x80 # is directory
+                entry.data[3]|=0x80 # is directory
                 
                 # presumably load, exec and length are irrelevant?
 
-                self._set_le(data,idx+0x16,3,
-                             self._append_dir(item,dir_sector_idx))
-
+                self._set_le(entry.data,0x16,3,
+                             self._append_dir(entry.item,dir_sector_idx))
             else: assert(False)
 
-            # presumably sequence number can be zero?
+            # presumably sequence number can be left at zero?
 
-            idx+=0x1a
+        entries.sort(lambda a,b:cmp(a.item.name.upper(),
+                                    b.item.name.upper()))
 
-        assert idx<=0x4cb
+        # fill out catalogue as flat array of 5 sectors of data.
+        data=[
+            0,
+            ord('H'),
+            ord('u'),
+            ord('g'),
+            ord('o'),
+        ]
+        
+        for entry in entries: data+=entry.data
+
+        # pad to 5 sectors in length.
+        while len(data)<5*256: data.append(0)
 
         # fill in small directory footer.
         self._set_str(data,0x4cc,dir.name)

@@ -76,6 +76,12 @@ Supply list of files on the command line. Files that have a
 corresponding .inf file are assumed to be BBC files, and other files
 are ignored.
 
+Files are added to the disc image in the order given, with the first
+file given starting at sector 2. You can combine manual lists of files
+with wildcards, if you want to add a whole folder's-worth of files,
+but only some need to go in order; if the list includes the same file
+multiple times, only the first occurrence counts.
+
 # ssd_extract
 
 Python 2.x script that converts a SSD or DSD disc image into a folder
@@ -137,8 +143,10 @@ LF, or, on Windows, CR+LF) and BBC-style ones (lines ending with CR).
 
 # adf_create
 
-Create an ADFS disk image from a folder of DFS-style .inf files.
+Create an ADFS disk image from a set of DFS-style .inf files.
 
 Files in `$` will be placed in the ADFS root, and additional
 directories will be created to hold DFS files in other directories as
 required.
+
+Specify file order in the same way as `ssd_create.py`.

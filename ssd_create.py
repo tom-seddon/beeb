@@ -42,6 +42,19 @@ def get_data(xs):
 ##########################################################################
 ##########################################################################
 
+def get_unique_paths(paths):
+    abs_paths=[os.path.normcase(os.path.abspath(path)) for path in paths]
+    abs_paths_seen=set()
+    result=[]
+    for i,abs_path in enumerate(abs_paths):
+        if abs_path not in abs_paths_seen:
+            result.append(paths[i])
+            abs_paths_seen.add(abs_path)
+    return result
+
+##########################################################################
+##########################################################################
+
 # def get_size_sectors(size_bytes): return (size_bytes+255)//256
 
 class BeebFile: pass
@@ -59,6 +72,8 @@ def main(options):
     # Remove input files with an extension - this just makes it easier
     # to use from a POSIX-style shell.
     options.fnames=[x for x in options.fnames if os.path.isfile(x+'.inf')]
+
+    options.fnames=get_unique_paths(options.fnames)
 
     # *TITLE setting.
     title=''
