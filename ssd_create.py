@@ -1,6 +1,5 @@
 #!/usr/bin/python
 import argparse,os,os.path,sys,struct,glob
-emacs=os.getenv("EMACS") is not None
 
 ##########################################################################
 ##########################################################################
@@ -9,8 +8,7 @@ def fatal(str):
     sys.stderr.write("FATAL: %s"%str)
     if str[-1]!='\n': sys.stderr.write("\n")
     
-    if emacs: raise RuntimeError
-    else: sys.exit(1)
+    sys.exit(1)
 
 ##########################################################################
 ##########################################################################
