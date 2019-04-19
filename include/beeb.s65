@@ -1,0 +1,192 @@
+;-------------------------------------------------------------------------
+;
+; BBC Micro include file for 64tass
+;
+; Copyright (C) 2018-9 Tom Seddon
+; 
+; This program is free software: you can redistribute it and/or
+; modify it under the terms of the GNU General Public License as
+; published by the Free Software Foundation, either version 3 of the
+; License, or (at your option) any later version.
+; 
+; This program is distributed in the hope that it will be useful, but
+; WITHOUT ANY WARRANTY; without even the implied warranty of
+; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+; General Public License for more details.
+; 
+; You should have received a copy of the GNU General Public License
+; along with this program. If not, see
+; <https://www.gnu.org/licenses/>.
+;
+;-------------------------------------------------------------------------
+
+; MOS entry points
+
+osrdsc=$ffb9
+oseven=$ffbf
+gsinit=$ffc2
+gsread=$ffc5
+osfind=$ffce
+osbput=$ffd4
+osbget=$ffd7
+osfile=$ffdd
+osargs=$ffda
+osrdch=$ffe0
+osasci=$ffe3
+osnewl=$ffe7
+oswrch=$ffee
+osword=$fff1
+osbyte=$fff4
+oscli=$fff7
+
+;-------------------------------------------------------------------------
+
+; Vectors
+
+userv=$200
+brkv=$202
+irq1v=$204
+irq2v=$206
+cliv=$208
+bytev=$20a
+wordv=$20c
+wrchv=$20e
+rdchv=$210
+filev=$212
+argsv=$214
+bgetv=$216
+bputv=$218
+gbpbv=$21a
+findv=$21c
+fscv=$21e
+eventv=$220
+uptv=$222
+vduv=$226
+keyv=$228
+insv=$22a
+remv=$22c
+cnpv=$22e
+ind1v=$230
+ind2v=$232
+ind3v=$234
+
+;-------------------------------------------------------------------------
+
+; Tube transfer reasons
+
+tube_multi_byte_parasite_to_host=0
+tube_multi_byte_host_to_parasite=1
+tube_multi_pairs_parasite_to_host=2
+tube_multi_pairs_host_to_parasite=3
+tube_execute=4
+tube_256_byte_parasite_to_host=6
+tube_256_byte_host_to_parasite=7
+
+;-------------------------------------------------------------------------
+
+; Hardware stuff
+
+;-------------------------------------------------------------------------
+
+; ROMSEL
+                .virtual $fe30
+romsel: .fill 0
+                .endv
+
+;-------------------------------------------------------------------------
+
+; ACCCON
+                .virtual $fe34
+acccon: .block
+;D=1 = display shadow RAM; D=0 = display main RAM
+d=$01
+
+;E=1 = VDU code ($c000-$dfff in MOS ROM) accesses shadow RAM; E=0 =
+;VDU code accesses main RAM
+e=$02
+
+;X=1 = shadow RAM at $3000; X=0 = main RAM at $3000
+x=$04
+
+;Y=1 = HAZEL at $c000; Y=0 = MOS ROM at $c000
+y=$08
+
+;ITU=1 = access internal Tube; ITU=0 = access external Tube
+itu=$10
+
+;IFJ=1 = $fc00...$fdff accesses cartridge; IFJ=0 = $fc00...$fdff
+;accesses 1MHz bus
+ifj=$20
+
+; TST=1 = read MOS ROM at $fc00...$feff; TST=0 = read I/O at
+; $fc00...$feff
+tst=$40
+
+;IRR=1 = IRQ to CPU
+irr=$80
+                .bend
+                .endv
+                
+;-------------------------------------------------------------------------
+
+                .virtual $fee0
+                
+tube_fifo1_status: .fill 1
+tube_fifo1_data: .fill 1
+tubo_fifo2_status: .fill 1
+tube_fifo2_data: .fill 1
+tubo_fifo3_status: .fill 1
+tube_fifo3_data: .fill 1
+tubo_fifo4_status: .fill 1
+tube_fifo4_data: .fill 1
+                
+                .endv
+
+;-------------------------------------------------------------------------
+
+; if language_entry is 0, no language entry.
+;
+; if version_string is empty, no version string.
+emit_rom_header: .macro language_entry,service_entry,version_number,title_string,version_string,copyright_string
+start:
+                ; +00 Language entry point
+                .if \language_entry!=0
+language_entry_flag=$40
+                jmp \language_entry
+                .else
+language_entry_flag=0
+                brk
+                brk
+                brk
+                .endif
+
+                ; +03 Service entry point
+                jmp \service_entry
+
+                ; +06 ROM type
+                .byte $82|language_entry_flag
+
+                ; +07 Copyright offset
+                .byte copyright-start
+
+                ; +08 Version number
+                .byte version_number
+
+                ; +09 Title string
+                .byte title_string
+
+                .if version_string!=''
+                ; +vv Version string
+                .byte 0
+                .byte version_string
+                .endif
+
+                ; +nn Copyright string
+copyright:
+                .byte 0,'(C)'
+                .if \copyright_string!=''
+                .byte ' ',\copyright_string
+                .endif
+                .byte 0
+                
+                .endm
