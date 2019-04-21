@@ -147,7 +147,7 @@ tube_fifo4_data: .fill 1
 ; if language_entry is 0, no language entry.
 ;
 ; if version_string is empty, no version string.
-emit_rom_header: .macro language_entry,service_entry,version_number,title_string,version_string,copyright_string
+emit_rom_header .macro language_entry,service_entry,version_number,title_string,version_string,copyright_string
 start:
                 ; +00 Language entry point
                 .if \language_entry!=0
@@ -167,26 +167,33 @@ language_entry_flag=0
                 .byte $82|language_entry_flag
 
                 ; +07 Copyright offset
-                .byte copyright-start
+                .byte copyright-1-start
 
                 ; +08 Version number
-                .byte version_number
+                .byte \version_number
 
                 ; +09 Title string
-                .byte title_string
-
-                .if version_string!=''
+name:
+                .text \title_string
+name_end:
+                .byte 0
+version:
+                .text \version_string
+version_end:
+                .if \version_string!=''
                 ; +vv Version string
                 .byte 0
-                .byte version_string
                 .endif
 
                 ; +nn Copyright string
+                .byte 0
 copyright:
-                .byte 0,'(C)'
+                .text '(C)'
                 .if \copyright_string!=''
                 .byte ' ',\copyright_string
                 .endif
+copyright_end:
                 .byte 0
                 
                 .endm
+                
