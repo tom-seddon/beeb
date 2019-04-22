@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import argparse,sys,os.path
 
 ##########################################################################
@@ -22,10 +23,10 @@ def main(options):
 ##########################################################################
 
 if __name__=='__main__':
-    parser=argparse.ArgumentParser('convert C64 .PRG to data + BBC Micro .inf file')
+    parser=argparse.ArgumentParser(description='convert C64 .PRG to BBC Micro data + .inf files')
 
-    parser.add_argument('input_path',metavar='FILE',help='read C64 .PRG from %(metavar)s')
-    parser.add_argument('output_path',metavar='FILE',help='write to %(metavar)s and %(metavar)s.inf')
+    parser.add_argument('input_path',metavar='PRG',help='read C64 .PRG from %(metavar)s')
+    parser.add_argument('output_path',metavar='STEM',help='write to %(metavar)s and %(metavar)s.inf')
     #parser.add_argument('bbc_name',metavar='NAME',help='use %(metavar)s as BBC name')
     
     main(parser.parse_args())
