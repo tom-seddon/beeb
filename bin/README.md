@@ -143,3 +143,11 @@ directories will be created to hold DFS files in other directories as
 required.
 
 Specify file order in the same way as `ssd_create.py`.
+
+# png2bbc
+
+Create a BBC bitmap screen memory image from a .png file.
+
+The .png file should contain only valid BBC colours - (0,0,0),
+(255,0,0), etc. - but png2bbc will try to do its best, within the
+constraints of the mode specified.
