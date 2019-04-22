@@ -151,3 +151,12 @@ Create a BBC bitmap screen memory image from a .png file.
 The .png file should contain only valid BBC colours - (0,0,0),
 (255,0,0), etc. - but png2bbc will try to do its best, within the
 constraints of the mode specified.
+
+# prg2bbc
+
+Convert a C64 PRG file, as output by
+[64tass](http://tass64.sourceforge.net/), into a BBC data/inf pair.
+
+The PRG file's load address will be used as the BBC file's load
+address and execution address, and the output file name will be used
+to generate the BBC name in the .inf file.
