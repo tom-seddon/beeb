@@ -19,9 +19,12 @@
 ; <https://www.gnu.org/licenses/>.
 ;
 ;-------------------------------------------------------------------------
+; 
+;-------------------------------------------------------------------------
 
 ; MOS entry points
 
+                .weak
 osrdsc=$ffb9
 oseven=$ffbf
 gsinit=$ffc2
@@ -38,11 +41,13 @@ oswrch=$ffee
 osword=$fff1
 osbyte=$fff4
 oscli=$fff7
-
+                .endweak
+                
 ;-------------------------------------------------------------------------
 
 ; Vectors
 
+                .weak
 userv=$200
 brkv=$202
 irq1v=$204
@@ -69,7 +74,86 @@ cnpv=$22e
 ind1v=$230
 ind2v=$232
 ind3v=$234
+                .endweak
 
+;-------------------------------------------------------------------------
+
+; Key codes
+                .weak
+key_space=$62
+key_comma=$66
+key_minus=$17
+key_stop=$67
+key_slash=$68
+key_0=$27
+key_1=$30
+key_2=$31
+key_3=$11
+key_4=$12
+key_5=$13
+key_6=$34
+key_7=$24
+key_8=$15
+key_9=$26
+key_colon=$48
+key_semicolon=$57
+key_at=$47
+key_a=$41
+key_b=$64
+key_c=$52
+key_d=$32
+key_e=$22
+key_f=$43
+key_g=$53
+key_h=$54
+key_i=$25
+key_j=$45
+key_k=$46
+key_l=$56
+key_m=$65
+key_n=$55
+key_o=$36
+key_p=$37
+key_q=$10
+key_r=$33
+key_s=$51
+key_t=$23
+key_u=$35
+key_v=$63
+key_w=$21
+key_x=$42
+key_y=$44
+key_z=$61
+key_left_square_bracket=$38
+key_backslash=$78
+key_right_square_bracket=$58
+key_caret=$18
+key_underline=$28
+key_escape=$70
+key_tab=$60
+key_caps_lock=$40
+key_ctrl=$1
+key_shift_lock=$50
+key_shift=$0
+key_delete=$59
+key_copy=$69
+key_return=$49
+key_up=$39
+key_down=$29
+key_left=$19
+key_right=$79
+key_f0=$20
+key_f1=$71
+key_f2=$72
+key_f3=$73
+key_f4=$14
+key_f5=$74
+key_f6=$75
+key_f7=$16
+key_f8=$76
+key_f9=$77
+                .endweak                
+                
 ;-------------------------------------------------------------------------
 
 ; Tube transfer reasons
@@ -89,13 +173,16 @@ tube_256_byte_host_to_parasite=7
 ;-------------------------------------------------------------------------
 
 ; ROMSEL
+                .weak
                 .virtual $fe30
 romsel: .fill 0
                 .endv
+                .endweak
 
 ;-------------------------------------------------------------------------
 
 ; ACCCON
+                .weak
                 .virtual $fe34
 acccon: .block
 ;D=1 = display shadow RAM; D=0 = display main RAM
@@ -126,6 +213,38 @@ tst=$40
 irr=$80
                 .bend
                 .endv
+                .endweak
+
+;-------------------------------------------------------------------------
+
+                .weak
+                .virtual $fe20
+video_ula_control: .block
+; Flashing colour select
+flash=$01
+
+; If set, teletext mode
+teletext=$02
+
+; Shift rate
+shift_rate_mask=$0c
+shift_rate_16MHz=$0c
+shift_rate_8MHz=$08
+shift_rate_4MHz=$04
+shift_rate_2MHz=$00
+
+; 2MHz CRTC flag    
+crtc_2MHz=$10
+
+; Cursor bits
+cursor_mask=$e0
+                .bend
+                .endv
+                .endweak
+
+                .weak
+video_ula_palette=$fe21
+                .endweak
                 
 ;-------------------------------------------------------------------------
 
