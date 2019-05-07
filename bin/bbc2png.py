@@ -44,21 +44,23 @@ def get_palette_indexes(value,bpp):
 ModeDef=collections.namedtuple("ModeDef",
                                "pc_width_scale pc_height_scale default_palette num_columns row_height")
 
-def main(options):
+g_modes={
+    0:ModeDef(1,2,[0,7],80,8),    
+    1:ModeDef(1,1,[0,1,3,7],80,8),
+    2:ModeDef(2,1,[0,1,2,3,4,5,6,7,0,1,2,3,4,5,6,7],80,8),
+    3:ModeDef(1,2,[0,7],80,10),   
+    4:ModeDef(1,1,[0,7],40,8),    
+    5:ModeDef(2,1,[0,1,3,7],40,8),
+    6:ModeDef(1,1,[0,7],40,10),
+    8:ModeDef(4,1,[0,1,2,3,4,5,6,7,0,1,2,3,4,5,6,7],40,8),
+}
+
+def bbc2png(options):
     global g_verbose
     g_verbose=options.verbose
 
-    modes=[
-        ModeDef(1,2,[0,7],80,8),     # 0
-        ModeDef(1,1,[0,1,3,7],80,8), # 1
-        ModeDef(2,1,[0,1,2,3,4,5,6,7,0,1,2,3,4,5,6,7],80,8), # 2
-        ModeDef(1,2,[0,7],80,10),     # 3
-        ModeDef(1,1,[0,7],40,8),     # 4
-        ModeDef(2,1,[0,1,3,7],40,8), # 5
-        ModeDef(1,1,[0,7],40,10), # 6
-    ]
-    if options.mode<0 or options.mode>len(modes): fatal("unsupported MODE: %d"%options.mode)
-    mode=modes[options.mode]
+    if options.mode not in g_modes: fatal("unsupported MODE: %d"%options.mode)
+    mode=g_modes[options.mode]
 
     if len(mode.default_palette)==2: bpp=1
     elif len(mode.default_palette)==4: bpp=2
@@ -125,11 +127,8 @@ def main(options):
 
 ##########################################################################
 ##########################################################################
-
-# http://stackoverflow.com/questions/25513043/python-argparse-fails-to-parse-hex-formatting-to-int-type
-def auto_int(x): return int(x,0)
-
-if __name__=="__main__":
+            
+def main(args):
     parser=argparse.ArgumentParser(description="convert BBC Micro screen dump")
     
     parser.add_argument("-v",
@@ -176,12 +175,19 @@ if __name__=="__main__":
                         metavar="FILE",
                         help="file to read screen dump from")
 
+    modes_list='/'.join([str(x) for x in g_modes.keys()])
     parser.add_argument("mode",
                         type=auto_int,
-                        help="MODE screen dump came from")
-
-    args=sys.argv[1:]
+                        help="MODE screen dump came from - %s"%modes_list)
 
     options=parser.parse_args(args)
     
-    main(options)
+    bbc2png(options)
+            
+##########################################################################
+##########################################################################
+
+# http://stackoverflow.com/questions/25513043/python-argparse-fails-to-parse-hex-formatting-to-int-type
+def auto_int(x): return int(x,0)
+
+if __name__=="__main__": main(sys.argv[1:])
