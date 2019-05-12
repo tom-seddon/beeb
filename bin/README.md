@@ -144,6 +144,21 @@ required.
 
 Specify file order in the same way as `ssd_create.py`.
 
+# adf_extract
+
+Extract an ADFS disk image to .inf files.
+
+The directory structure of the ADFS disk will be reproduced. PC
+folders will be created corresponding to each ADFS directory, with
+data/.inf files created in each PC folder corresponding to the ADFS
+files.
+
+The .inf format isn't ADFS-minded, so note that the conversion process
+may be lossy. ADFS file names will be stored in the .inf files, so
+they can always be reconstructed, but there is no similar mechanism
+for ADFS directory names, which may become lost if they use chars not
+supported by modern PC filing systems.
+
 # png2bbc
 
 Create a BBC bitmap screen memory image from a .png file.
