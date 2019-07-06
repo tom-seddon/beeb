@@ -15,7 +15,7 @@ def save_file(data,path,options):
 ##########################################################################
 ##########################################################################
 
-def main(options):
+def png2bbc(options):
     if options.mode<0 or options.mode>6:
         print>>sys.stderr,'FATAL: invalid mode: %d'%options.mode
         sys.exit(1)
@@ -124,7 +124,7 @@ def main(options):
 ##########################################################################
 ##########################################################################
 
-if __name__=='__main__':
+def main(argv):
     parser=argparse.ArgumentParser()
 
     parser.add_argument('-o',dest='output_path',metavar='FILE',help='output BBC data to %(metavar)s')
@@ -144,4 +144,10 @@ if __name__=='__main__':
     parser.add_argument('-q','--quiet',action='store_true',help='don\'t print warnings')
     parser.add_argument('input_path',metavar='FILE',help='load PNG data fro %(metavar)s')
     parser.add_argument('mode',type=int,help='screen mode')
-    main(parser.parse_args())
+    
+    png2bbc(parser.parse_args(argv))
+
+##########################################################################
+##########################################################################
+
+if __name__=='__main__': main(sys.argv[1:])
