@@ -47,13 +47,35 @@ ModeDef=collections.namedtuple("ModeDef",
 g_modes={
     0:ModeDef(1,2,[0,7],80,8),    
     1:ModeDef(1,1,[0,1,3,7],80,8),
-    2:ModeDef(2,1,[0,1,2,3,4,5,6,7,0,1,2,3,4,5,6,7],80,8),
+    2:ModeDef(2,1,range(16),80,8),
     3:ModeDef(1,2,[0,7],80,10),   
     4:ModeDef(1,1,[0,7],40,8),    
     5:ModeDef(2,1,[0,1,3,7],40,8),
     6:ModeDef(1,1,[0,7],40,10),
-    8:ModeDef(4,1,[0,1,2,3,4,5,6,7,0,1,2,3,4,5,6,7],40,8),
+    8:ModeDef(4,1,range(16),40,8),
 }
+
+g_pc_colours=[
+    # authentic colours
+    (0,0,0),
+    (255,0,0),
+    (0,255,0),
+    (255,255,0),
+    (0,0,255),
+    (255,0,255),
+    (0,255,255),
+    (255,255,255),
+
+    # fake colours
+    (128,128,128),              # 8 = grey
+    (255,128,128),              # 9 = pink
+    (0,128,0),                  # 10 = dark green
+    (128,128,0),                # 11 = murky yellow
+    (0,128,255),                # 12 = sky blue
+    (255,128,255),              # 13 = pastel magenta
+    (128,255,255),              # 14 = pastel cyan
+    (192,192,192),              # 15 = light grey
+]
 
 def bbc2png(options):
     global g_verbose
@@ -75,14 +97,12 @@ def bbc2png(options):
     if options.palette is not None:
         if len(options.palette)!=len(palette): fatal("wrong palette size - must be %d"%len(palette))
 
+        palette=[]
         for c in options.palette:
-            if c not in "01234567": fatal("bad colour in palette: %c"%c)
+            try: palette.append(int(c,16))
+            except ValueError: fatal("bad colour in palette: %c"%c)
 
-        palette=[int(c) for c in options.palette]
-
-    palette=[(0 if (c&1)==0 else 255,
-              0 if (c&2)==0 else 255,
-              0 if (c&4)==0 else 255) for c in palette]
+    palette=[g_pc_colours[c&(15 if options.pal16 else 7)] for c in palette]
 
     # Allocate a palette entry for the mode 3/6 gaps.
     blank_index=None
@@ -156,6 +176,11 @@ def main(args):
                         "--palette",
                         default=None,
                         help="specify palette")
+
+    parser.add_argument('--16',
+                        dest='pal16',
+                        action='store_true',
+                        help='use non-BBC colours when converting physical colours 8-15')
 
     parser.add_argument("-d",
                         "--offset",
