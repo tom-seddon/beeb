@@ -115,6 +115,21 @@ def main(options):
 
     # Load all files in.
     files=[]
+    
+    # Add a manually-specified !BOOT, if necessary.
+    if len(options.build)>0:
+        file=BeebFile()
+
+        file.bbc_name='$!BOOT'
+        file.load=0xffffffff
+        file.exec_=0xffffffff
+        file.locked=False
+
+        file.data=''
+        for line in options.build: file.data+=line+'\r'
+
+        files.append(file)
+
     v("%d file(s):\n"%len(options.fnames))
     for fname in options.fnames:
         file=BeebFile()
@@ -172,20 +187,6 @@ def main(options):
                     attr=int(inf_data[3],16)
                     file.locked=(attr&8)!=0
                 except ValueError: pass
-
-        files.append(file)
-
-    # Add a manually-specified !BOOT, if necessary.
-    if len(options.build)>0:
-        file=BeebFile()
-
-        file.bbc_name='$!BOOT'
-        file.load=0xffffffff
-        file.exec_=0xffffffff
-        file.locked=False
-
-        file.data=''
-        for line in options.build: file.data+=line+'\r'
 
         files.append(file)
 
