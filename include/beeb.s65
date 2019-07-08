@@ -248,6 +248,64 @@ video_ula_palette=$fe21
                 
 ;-------------------------------------------------------------------------
 
+VIAIRQ: .block
+ca2=$01
+ca1=$02
+shift=$04
+cb2=$08
+cb1=$10
+t2=$20
+t1=$40
+                .bend
+                
+VIA: .struct                    ;
+orb:
+irb:
+                .fill 1         ;0
+ora:
+ira:
+                .fill 1         ;1
+ddrb:
+                .fill 1         ;2
+ddra:
+                .fill 1         ;3
+t1c_l:
+                .fill 1         ;4
+t1c_h:
+                .fill 1         ;5
+t1l_l:
+                .fill 1         ;6
+t1l_h:
+                .fill 1         ;7
+t2c_l:
+                .fill 1         ;8
+t2c_h:
+                .fill 1         ;9
+sr:
+                .fill 1         ;10
+acr:
+                .fill 1         ;11
+pcr:
+                .fill 1         ;12
+ifr:
+                .fill 1         ;13
+ier:
+                .fill 1         ;14
+ora_no_handshake:
+ira_no_handshake:
+                .fill 1         ;15
+                .ends
+
+                .virtual $fe40
+system_via: .dstruct VIA
+                .endv
+
+                .virtual $fe60
+user_via: .dstruct VIA
+                .endv
+                
+;-------------------------------------------------------------------------
+
                 .virtual $fee0
                 
 tube_fifo1_status: .fill 1
