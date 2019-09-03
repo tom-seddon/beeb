@@ -59,7 +59,7 @@ def get_unique_paths(paths):
 
 class BeebFile: pass
 
-def main(options):
+def ssd_create(options):
     global g_verbose
     g_verbose=options.verbose
 
@@ -276,7 +276,7 @@ def main(options):
 ##########################################################################
 ##########################################################################
 
-if __name__=="__main__":
+def main(args):
     parser=argparse.ArgumentParser(description="make SSD disc image from .inf folder")
 
     parser.add_argument("-v",
@@ -336,8 +336,10 @@ if __name__=="__main__":
                         default=[],
                         help="file(s) to put in disc image (non-BBC files will be ignored)")
     
-    args=sys.argv[1:]
-
     options=parser.parse_args(args)
-    main(options)
+    ssd_create(options)
     
+##########################################################################
+##########################################################################
+
+if __name__=='__main__': main(sys.argv[1:])
