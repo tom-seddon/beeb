@@ -8,7 +8,8 @@ def find_device(specified_device):
     if specified_device is not None: return specified_device
 
     devices=glob.glob('/dev/cu.usbmodem*')
-    if len(devices)!=1:
+    if len(devices)==0: raise RuntimeError('no usbmodem devices found')
+    elif len(devices)>1:
         raise RuntimeError('multiple usbmodem devices found: %s'%(', '.join(devices)))
 
     return devices[0]
