@@ -175,3 +175,10 @@ Convert a C64 PRG file, as output by
 The PRG file's load address will be used as the BBC file's load
 address and execution address, and the output file name will be used
 to generate the BBC name in the .inf file.
+
+# mos_switch, mos_program _(Unix only)_
+
+Operate a MOS switcher addon.
+
+`mos_switch` selects the bank to use, and `mos_program` programs a
+bank.
