@@ -310,11 +310,11 @@ user_via: .dstruct VIA
                 
 tube_fifo1_status: .fill 1
 tube_fifo1_data: .fill 1
-tubo_fifo2_status: .fill 1
+tube_fifo2_status: .fill 1
 tube_fifo2_data: .fill 1
-tubo_fifo3_status: .fill 1
+tube_fifo3_status: .fill 1
 tube_fifo3_data: .fill 1
-tubo_fifo4_status: .fill 1
+tube_fifo4_status: .fill 1
 tube_fifo4_data: .fill 1
                 
                 .endv
