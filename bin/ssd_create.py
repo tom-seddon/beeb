@@ -69,9 +69,25 @@ def ssd_create(options):
     for pattern in options.fnames: fnames+=glob.glob(pattern)
     options.fnames=fnames
 
-    # Remove input files with an extension - this just makes it easier
-    # to use from a POSIX-style shell.
-    options.fnames=[x for x in options.fnames if os.path.isfile(x+'.inf')]
+    # Accept any files on the command line, and just strip any that
+    # are no good. Make it a bit easier to use from a POSIX shell.
+    def is_valid_beeb_fname(fname):
+        if os.path.isfile('%s.inf'%fname):
+            # has .INF file - yes
+            return True
+
+        basename=os.path.basename(fname)
+        if (len(basename)>=3 and
+            len(basename)<=9 and
+            basename[1]=='.'):
+            # has DFS-style name - yes
+            return True
+
+        # no.
+        return False
+    
+    options.fnames=[x for x in options.fnames if is_valid_beeb_fname(x)]
+
 
     options.fnames=get_unique_paths(options.fnames)
 
@@ -134,15 +150,18 @@ def ssd_create(options):
     for fname in options.fnames:
         file=BeebFile()
 
-        with open(fname+'.inf','rt') as f:
-            inf_lines=f.readlines()
-            if len(inf_lines)==0:
-                # Bodge.
-                inf_data=[os.path.basename(fname),
-                          'ffffffff',
-                          'ffffffff']
-            else:
-                inf_data=inf_lines[0].split()
+        inf_data=None
+        inf_fname='%s.inf'%fname
+        if os.path.isfile(inf_fname):
+            with open(fname+'.inf','rt') as f:
+                inf_lines=f.readlines()
+                if len(inf_lines)>0: inf_data=inf_lines[0].split()
+
+        if inf_data is None:
+            # Default inf data.
+            inf_data=[os.path.basename(fname),
+                      'ffffffff',
+                      'ffffffff']
 
         if len(inf_data)<3: continue
 
