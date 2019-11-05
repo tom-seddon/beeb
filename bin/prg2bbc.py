@@ -13,6 +13,8 @@ def main(options):
 
     addr=ord(data[0])|ord(data[1])<<8
 
+    if options.io: addr|=0xffff0000
+
     with open(options.output_path+'.inf','wt') as f:
         print>>f,'%s %x %x'%(os.path.basename(options.output_path),addr,addr)
     
@@ -24,6 +26,8 @@ def main(options):
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description='convert C64 .PRG to BBC Micro data + .inf files')
+
+    parser.add_argument('--io',action='store_true',help='set top 16 bits of load/exec address to all 1s')
 
     parser.add_argument('input_path',metavar='PRG',help='read C64 .PRG from %(metavar)s')
     parser.add_argument('output_path',metavar='STEM',help='write to %(metavar)s and %(metavar)s.inf')
