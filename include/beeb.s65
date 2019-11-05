@@ -320,6 +320,22 @@ tube_fifo4_data: .fill 1
                 .endv
 
 ;-------------------------------------------------------------------------
+;
+; 1770/1772. Use .dstruct to put this wherever necessary.
+
+WD177x: .struct
+status:
+command:
+                .fill 1
+track:
+                .fill 1
+sector:
+                .fill 1
+data:
+                .fill 1
+                .ends
+
+;-------------------------------------------------------------------------
 
 ; if language_entry is 0, no language entry.
 ;
