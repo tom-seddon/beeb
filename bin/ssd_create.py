@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import argparse,os,os.path,sys,struct,glob
+import argparse,os,os.path,sys,struct,glob,collections
 
 ##########################################################################
 ##########################################################################
@@ -42,14 +42,123 @@ def get_data(xs):
 ##########################################################################
 ##########################################################################
 
-def get_unique_paths(paths):
-    abs_paths=[os.path.normcase(os.path.abspath(path)) for path in paths]
-    abs_paths_seen=set()
+BeebFile=collections.namedtuple('Metadata','pc_path dir name load exec_ locked data')
+
+File=collections.namedtuple('File','pc_path beeb_name')
+
+##########################################################################
+##########################################################################
+
+def get_files(options):
+    files=[]
+
+    for rename in options.renames:
+        files.append(File(pc_path=rename[0],beeb_name=rename[1]))
+
+    # Use glob.glob on the input file names, since Windows-style
+    # shells don't do that for you.
+    for pattern in options.fnames:
+        for path in glob.glob(pattern):
+            files.append(File(pc_path=path,beeb_name=None))
+
+    return files
+
+##########################################################################
+##########################################################################
+
+def get_beeb_files(files):
+    beeb_names_seen_lc=set()
+    inf_paths_seen=set()
+
     result=[]
-    for i,abs_path in enumerate(abs_paths):
+    for file in files:
+        # don't treat used .inf paths as Beeb files!
+        if file.pc_path in inf_paths_seen: continue
+        
+        inf_path='%s.inf'%file.pc_path
+
+        inf_data=None
+        if os.path.isfile(inf_path):
+            inf_paths_seen.add(inf_path)
+            with open(inf_path,'rt') as f:
+                inf_lines=f.readlines()
+                if len(inf_lines)>0: inf_data=inf_lines[0].split()
+
+        if inf_data is None:
+            inf_data=[os.path.basename(file.pc_path),
+                      'ffffffff',
+                      'ffffffff']
+
+        if file.beeb_name is not None: beeb_name=file.beeb_name
+        else: beeb_name=inf_data[0]
+
+        if len(beeb_name)<3:
+            print>>sys.stderr,'NOTE: Ignoring %s: BBC name too short: %s'%(file.pc_path,beeb_name)
+            continue
+        
+        if beeb_name[1]!='.':
+            print>>sys.stderr,'NOTE: Ignoring %s: BBC name not a DFS-style name: %s'%(file.pc_path,beeb_name)
+            continue
+        
+        if len(beeb_name)>9:
+            print>>sys.stderr,'NOTE: Ignoring %s: BBC name too long: %s'%(file.pc_path,beeb_name)
+            continue
+
+        load=int(inf_data[1],16)
+
+        exec_=int(inf_data[2],16)
+
+        locked=False
+        if len(inf_data)>=4:
+            if inf_data[3].lower()=='l': locked=True
+            else:
+                try:
+                    attr=int(inf_data[3],16)
+                    locked=(attr&8)!=0
+                except ValueError: pass
+
+        with open(file.pc_path,'rb') as f: data=[ord(x) for x in f.read()]
+
+        result.append(BeebFile(pc_path=file.pc_path,
+                               dir=beeb_name[0],
+                               name=beeb_name[2:],
+                               load=load,
+                               exec_=exec_,
+                               locked=locked,
+                               data=data))
+
+    return result
+
+##########################################################################
+##########################################################################
+
+def get_boot_beeb_file(lines):
+    if len(lines)==0: return None
+    else:
+        data=''
+        for line in lines: data+=line+'\r'
+
+        return BeebFile(pc_path='<<command line>>',
+                        dir='$',
+                        name='!BOOT',
+                        load=0xffffffff,
+                        exec_=0xffffffff,
+                        locked=True,
+                        data=data)
+
+##########################################################################
+##########################################################################
+
+def get_unique_paths(files):
+    result=[]
+    
+    abs_paths_seen=set()
+    for file in files:
+        abs_path=os.path.normcase(os.path.abspath(file.pc_path))
         if abs_path not in abs_paths_seen:
-            result.append(paths[i])
+            result.append(file)
             abs_paths_seen.add(abs_path)
+
     return result
 
 ##########################################################################
@@ -57,39 +166,15 @@ def get_unique_paths(paths):
 
 # def get_size_sectors(size_bytes): return (size_bytes+255)//256
 
-class BeebFile: pass
+FileRegion=collections.namedtuple('FileRegion','sector num_sectors')
 
 def ssd_create(options):
     global g_verbose
     g_verbose=options.verbose
 
-    # Use glob.glob to expand the input files, since Windows-style
-    # shells don't do that for you.
-    fnames=[]
-    for pattern in options.fnames: fnames+=glob.glob(pattern)
-    options.fnames=fnames
+    files=get_files(options)
 
-    # Accept any files on the command line, and just strip any that
-    # are no good. Make it a bit easier to use from a POSIX shell.
-    def is_valid_beeb_fname(fname):
-        if os.path.isfile('%s.inf'%fname):
-            # has .INF file - yes
-            return True
-
-        basename=os.path.basename(fname)
-        if (len(basename)>=3 and
-            len(basename)<=9 and
-            basename[1]=='.'):
-            # has DFS-style name - yes
-            return True
-
-        # no.
-        return False
-    
-    options.fnames=[x for x in options.fnames if is_valid_beeb_fname(x)]
-
-
-    options.fnames=get_unique_paths(options.fnames)
+    files=get_beeb_files(files)
 
     # *TITLE setting.
     title=''
@@ -101,14 +186,6 @@ def ssd_create(options):
         if len(options.title)>12: fatal("title is too long - max 12 chars")
         # if len(options.fnames)>31: fatal("too many files - max 31")
         title=options.title
-
-    renames={}
-    for rename in options.renames:
-        if rename[0].lower() in renames:
-            fatal('duplicated rename: %s'%rename[0])
-            
-        renames[rename[0].lower()]=rename[1]
-    renamed=set()
 
     # *OPT4 setting.
     opt4=0
@@ -129,104 +206,32 @@ def ssd_create(options):
     num_disc_sectors=(40 if options._40 else 80)*10
     v("%d sector(s) on disc\n"%num_disc_sectors)
 
-    # Load all files in.
-    files=[]
-    
     # Add a manually-specified !BOOT, if necessary.
-    if len(options.build)>0:
-        file=BeebFile()
-
-        file.bbc_name='$!BOOT'
-        file.load=0xffffffff
-        file.exec_=0xffffffff
-        file.locked=False
-
-        file.data=''
-        for line in options.build: file.data+=line+'\r'
-
-        files.append(file)
-
-    v("%d file(s):\n"%len(options.fnames))
-    for fname in options.fnames:
-        file=BeebFile()
-
-        inf_data=None
-        inf_fname='%s.inf'%fname
-        if os.path.isfile(inf_fname):
-            with open(fname+'.inf','rt') as f:
-                inf_lines=f.readlines()
-                if len(inf_lines)>0: inf_data=inf_lines[0].split()
-
-        if inf_data is None:
-            # Default inf data.
-            inf_data=[os.path.basename(fname),
-                      'ffffffff',
-                      'ffffffff']
-
-        if len(inf_data)<3: continue
-
-        file.bbc_name=inf_data[0]
-
-        # Handle the rename before checking for validity.
-        new_bbc_name=renames.get(file.bbc_name.lower())
-        if new_bbc_name is not None:
-            renamed.add(file.bbc_name.lower())
-            v('Rename: %s -> %s\n'%(file.bbc_name,new_bbc_name))
-            file.bbc_name=new_bbc_name
-        
-        if len(file.bbc_name)<3:
-            print>>sys.stderr,'NOTE: Ignoring %s: BBC name too short: %s'%(fname,file.bbc_name)
-            continue
-        
-        if file.bbc_name[1]!='.':
-            print>>sys.stderr,'NOTE: Ignoring %s: BBC name not a DFS-style name: %s'%(fname,file.bbc_name)
-            continue
-        
-        if len(file.bbc_name)>9:
-            print>>sys.stderr,'NOTE: Ignoring %s: BBC name too long: %s'%(fname,file.bbc_name)
-            continue
-        
-        if len(options.build)>0:
-            if file.bbc_name.lower()=='$.!boot':
-                print>>sys.stderr,'NOTE: Ignoring specified $.!BOOT file due to --build'
-                continue
-
-        file.bbc_name=file.bbc_name[0]+file.bbc_name[2:] # remove '.'
-
-        with open(fname,"rb") as f: file.data=f.read()
-
-        file.load=int(inf_data[1],16)
-        file.exec_=int(inf_data[2],16)
-        
-        file.locked=False
-        if len(inf_data)>=4:
-            if inf_data[3].lower()=='l': file.locked=True
-            else:
-                try:
-                    attr=int(inf_data[3],16)
-                    file.locked=(attr&8)!=0
-                except ValueError: pass
-
-        files.append(file)
-
-    next_sector=2
-    for file in files:
-        file.sector=next_sector
-        file.size_sectors=(len(file.data)+255)//256
-        next_sector+=file.size_sectors
-
-        v("    %-10s %08X %08X %08X %s "%(file.bbc_name[0]+"."+file.bbc_name[1:],
-                                         file.load,
-                                         file.exec_,
-                                         len(file.data),
-                                         "L" if file.locked else ""))
-
-        v(" @%d"%file.sector)
-
-        v("\n")
+    boot_file=get_boot_beeb_file(options.build)
+    if boot_file is not None: files=[boot_file]+files
 
     if len(files)>31:
         fatal('Too many files - disk has %d files, but max is 31'%len(files))
+
+    next_sector=2
+    file_regions=[]
+
+    for file in files:
+        region=FileRegion(sector=next_sector,
+                        num_sectors=(len(file.data)+255)//256)
+        file_regions.append(region)
+        next_sector+=region.num_sectors
+
+        v("    %s.%-8s %08X %08X %08X %s "%(file.dir,
+                                            file.name,
+                                            file.load,
+                                            file.exec_,
+                                            len(file.data),
+                                            "L" if file.locked else ""))
+
+        v(" @%d"%region.sector)
+
+        v("\n")
 
     if next_sector>num_disc_sectors-2:
         fatal("Too much data - disk has %d sectors, but files use %d sectors"%(num_disc_sectors,next_sector))
@@ -250,11 +255,13 @@ def ssd_create(options):
     # Store catalogue data.
     next_sector=2
     for i,file in enumerate(files):
+        region=file_regions[i]
+        
         # Files are stored in reverse sector order.
         offset=8+8*(len(files)-1-i)
 
-        for j in range(1,len(file.bbc_name)): sectors[0][offset+j-1]=file.bbc_name[j]
-        sectors[0][offset+7]=file.bbc_name[0]
+        for j in range(len(file.name)): sectors[0][offset+j]=file.name[j]
+        sectors[0][offset+7]=file.dir
 
         sectors[1][offset+0]=(file.load>>0)&255
         sectors[1][offset+1]=(file.load>>8)&255
@@ -265,13 +272,15 @@ def ssd_create(options):
         sectors[1][offset+6]=(((3 if (file.exec_&0xffff0000) else 0)<<6)|
                               (((len(file.data)>>16)&3)<<4)|
                               ((3 if (file.load&0xffff0000) else 0)<<2)|
-                              (((file.sector>>8)&3)<<0))
-        sectors[1][offset+7]=file.sector&255
+                              (((region.sector>>8)&3)<<0))
+        sectors[1][offset+7]=region.sector&255
 
     # Store file data
-    for file in files:
-        assert len(sectors)==file.sector
-        for i in range(file.size_sectors):
+    for i,file in enumerate(files):
+        region=file_regions[i]
+        
+        assert len(sectors)==region.sector
+        for i in range(region.num_sectors):
             sectors.append(list(file.data[i*256:i*256+256]))
 
         # The last sector might need padding.
@@ -286,12 +295,6 @@ def ssd_create(options):
     if options.output_fname is not None:
         with open(options.output_fname,"wb") as f: f.write(image)
         
-    if len(renamed)!=len(renames):
-        print>>sys.stderr,'WARNING: Some renames were redundant:'
-        for key,val in renames.iteritems():
-            if key not in renamed:
-                print>>sys.stderr,'    %s -> %s'%(key,val)
-
 ##########################################################################
 ##########################################################################
 
@@ -336,17 +339,17 @@ def main(args):
 
     parser.add_argument('-r',
                         dest='renames',
-                        metavar=('OLD-BBC-NAME','NEW-BBC-NAME'),
+                        metavar=('PC-FILE','BBC-NAME'),
                         nargs=2,
                         action='append',
                         default=[],
-                        help='while adding, rename OLD-BBC-NAME to NEW-BBC-NAME')
+                        help='add %(metavar[0])s under BBC name %(metavar[1])s')
 
     parser.add_argument('-b',
                         '--build',
                         action='append',
                         default=[],
-                        help='add line to $.!BOOT. Implies --opt4=3 and overries any $.!BOOT file specified')
+                        help='add line to $.!BOOT, overriding any $.!BOOT specified and placing file first on disk. Implies --opt4=3')
 
     parser.add_argument("fnames",
                         nargs="*",
