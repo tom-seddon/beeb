@@ -1,5 +1,6 @@
 #!/usr/bin/python
-import argparse,sys,os.path
+from __future__ import print_function
+import argparse,sys,os.path,struct
 
 ##########################################################################
 ##########################################################################
@@ -11,12 +12,14 @@ def main(options):
         print>>sys.stderr,'to small to be a C64 .PRG'
         sys.exit(1)
 
-    addr=ord(data[0])|ord(data[1])<<8
+    
+    addr=struct.unpack_from('<H',data)[0]
 
     if options.io: addr|=0xffff0000
 
     with open(options.output_path+'.inf','wt') as f:
-        print>>f,'%s %x %x'%(os.path.basename(options.output_path),addr,addr)
+        print('%s %x %x'%(os.path.basename(options.output_path),addr,addr),
+              file=f)
     
     with open(options.output_path,'wb') as f: f.write(data[2:])
     
