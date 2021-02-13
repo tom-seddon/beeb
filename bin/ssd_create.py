@@ -343,7 +343,7 @@ def main(args):
                         nargs=2,
                         action='append',
                         default=[],
-                        help='add %(metavar[0])s under BBC name %(metavar[1])s')
+                        help='add PC-FILE under BBC name BBC-NAME')
 
     parser.add_argument('-b',
                         '--build',
