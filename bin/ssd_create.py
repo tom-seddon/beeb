@@ -26,18 +26,20 @@ def v(str):
 ##########################################################################
 
 def get_data(xs):
-    data=""
+    # This is super-dumb, but it works the same in both Python 2 and
+    # Python 3...
+    hex=''
     for x in xs:
-        if type(x) is int or type(x) is long:
+        if (type(x) is int or
+            (sys.version_info<(3,0) and type(x) is long)):
             assert x>=0 and x<=255
-            data+=chr(x)
+            hex+='%02x'%x
         elif type(x) is str:
             assert len(x)==1
-            data+=x
-        else:
-            assert False,(x,type(x))
+            hex+='%02x'%ord(x[0])
+        else: assert False,(x,type(x))
 
-    return data
+    return bytearray.fromhex(hex)
 
 ##########################################################################
 ##########################################################################
@@ -117,7 +119,7 @@ def get_beeb_files(files):
                     locked=(attr&8)!=0
                 except ValueError: pass
 
-        with open(file.pc_path,'rb') as f: data=[ord(x) for x in f.read()]
+        with open(file.pc_path,'rb') as f: data=f.read()
 
         result.append(BeebFile(pc_path=file.pc_path,
                                dir=beeb_name[0],
@@ -135,8 +137,10 @@ def get_beeb_files(files):
 def get_boot_beeb_file(lines):
     if len(lines)==0: return None
     else:
-        data=''
-        for line in lines: data+=line+'\r'
+        data=b''
+        for line in lines:
+            data+=get_data(list(line))
+            data+=b'\r'
 
         return BeebFile(pc_path='<<command line>>',
                         dir='$',
@@ -218,7 +222,7 @@ def ssd_create(options):
 
     for file in files:
         region=FileRegion(sector=next_sector,
-                        num_sectors=(len(file.data)+255)//256)
+                          num_sectors=(len(file.data)+255)//256)
         file_regions.append(region)
         next_sector+=region.num_sectors
 
@@ -281,19 +285,18 @@ def ssd_create(options):
         
         assert len(sectors)==region.sector
         for i in range(region.num_sectors):
-            sectors.append(list(file.data[i*256:i*256+256]))
+            sector=file.data[i*256:i*256+256]
+            sectors.append(sector)
 
         # The last sector might need padding.
-        while len(sectors[-1])!=256: sectors[-1].append(0)
+        sectors[-1]+=(256-len(sectors[-1]))*b'\x00'
 
     v("%d sectors on disc\n"%len(sectors))
-
-    image="".join([get_data(x) for x in sectors])
-
-    v("%d bytes in disc image\n"%len(image))
+    v("%d bytes in disc image\n"%(len(sectors)*256))
 
     if options.output_fname is not None:
-        with open(options.output_fname,"wb") as f: f.write(image)
+        with open(options.output_fname,"wb") as f:
+            for sector in sectors: f.write(get_data(sector))
         
 ##########################################################################
 ##########################################################################
