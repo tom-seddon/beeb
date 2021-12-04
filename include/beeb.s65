@@ -30,6 +30,7 @@ oseven=$ffbf
 gsinit=$ffc2
 gsread=$ffc5
 osfind=$ffce
+osgbpb=$ffd1
 osbput=$ffd4
 osbget=$ffd7
 osfile=$ffdd
