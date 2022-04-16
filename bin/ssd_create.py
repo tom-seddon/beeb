@@ -94,13 +94,10 @@ def get_beeb_files(files):
         if file.beeb_name is not None: beeb_name=file.beeb_name
         else: beeb_name=inf_data[0]
 
-        if len(beeb_name)<3:
-            print>>sys.stderr,'NOTE: Ignoring %s: BBC name too short: %s'%(file.pc_path,beeb_name)
-            continue
-        
-        if beeb_name[1]!='.':
-            print>>sys.stderr,'NOTE: Ignoring %s: BBC name not a DFS-style name: %s'%(file.pc_path,beeb_name)
-            continue
+        if len(beeb_name)<3 or beeb_name[1]!='.':
+            print>>sys.stderr,'NOTE: Not a DFS-style name: %s'%beeb_name
+            beeb_name='$.'+beeb_name
+            print>>sys.stderr,'NOTE: This file will be named: %s'%beeb_name
         
         if len(beeb_name)>9:
             print>>sys.stderr,'NOTE: Ignoring %s: BBC name too long: %s'%(file.pc_path,beeb_name)
