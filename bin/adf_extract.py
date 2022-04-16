@@ -209,6 +209,9 @@ def extract_dir(adf,
 def adf_extract(options):
     global g_verbose ; g_verbose=options.verbose
 
+    # try to make a folder named after the input file.
+    input_basename=os.path.splitext(os.path.basename(options.input_path))[0]
+
     with open(options.input_path,'rb') as f:
         adf=ADFSImage([ord(x) for x in f.read()],
                       options.sequential)
@@ -216,7 +219,8 @@ def adf_extract(options):
     extract_dir(adf,
                 ['$'],
                 2,
-                options.output_path)
+                os.path.join(options.output_path,input_basename))
+                             
 
 ##########################################################################
 ##########################################################################
