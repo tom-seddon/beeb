@@ -62,8 +62,7 @@ archive](http://wouter.bbcmicro.net/bbc/bbc-software.html).
 
 # ssd_create
 
-Python 2.7 script that builds a single-sided disc image from .inf
-files.
+Python 3 script that builds a single-sided disc image from .inf files.
 
 Supply list of files on the command line. Files that have a
 corresponding .inf file are assumed to be BBC files, and other files
@@ -90,7 +89,7 @@ separate `raw` folder.
 
 # bbc2png
 
-Python 2.7 script that converts a BBC screen dump into an image.
+Python 3 script that converts a BBC screen dump into an image.
 
 Supply name on command line of dump of screen RAM (as saved by, e.g.,
 `*SAVE X FFFF3000+5000`) and MODE the dump was taken from. Use `-o` to

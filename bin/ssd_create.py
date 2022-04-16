@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import argparse,os,os.path,sys,struct,glob,collections
 
 ##########################################################################
