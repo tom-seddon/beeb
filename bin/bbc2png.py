@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import os,os.path,sys,argparse,png,collections
 emacs=os.getenv("EMACS") is not None
 
@@ -28,7 +28,7 @@ def v(str):
 ##########################################################################
 
 def get_palette_indexes(value,bpp):
-    result=[0]*(8/bpp)
+    result=[0]*(8//bpp)
     j=0
     for i in range(8):
         result[j]<<=1
@@ -113,14 +113,14 @@ def bbc2png(options):
     v("Palette: %s\n"%palette)
 
     # Read image data.
-    with open(options.fname,"rb") as f: data=[ord(x) for x in f.read()]
+    with open(options.fname,"rb") as f: data=f.read()
     data=data[options.offset:]
     if options.count is not None: data=data[:options.count]
 
     # Image must match the 6845 dimensions.
     stride=num_columns*8
     if len(data)%stride!=0: fatal("image data not a multiple of stride %d"%stride)
-    num_rows=len(data)/stride
+    num_rows=len(data)//stride
 
     # Convert.
     width_scale=mode.pc_width_scale if options.pc else 1

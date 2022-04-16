@@ -183,7 +183,7 @@ transparent.
                     if p[i]!=0 and p[i]!=255:
                         p=find_closest_rgb(p)
                         if print_warnings:
-                            print>>sys.stderr,'Non-BBC Micro colour %s at (%d,%d) - using %s'%(pixels[y][x],x,y,p)
+                            print('Non-BBC Micro colour %s at (%d,%d) - using %s'%(pixels[y][x],x,y,p),file=sys.stderr)
                         break
 
                 pidx=rgbs.index((p[0],p[1],p[2]))
@@ -194,4 +194,3 @@ transparent.
         assert len(pixels[y])==len(pixels[y-1])
 
     return pidxs
-                            

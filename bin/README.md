@@ -11,11 +11,14 @@ are oriented more towards this way of working. (There are also
 
 For more info, run each with `-h` on the command line.
 
+Scripts are for Python 3 unless noted. (I am slowly working through
+converting them all.)
+
 # BBCBasicToText
 
-Python 3 script that converts tokenized BBC BASIC files to text.
-Originally by [Matt Godbolt](https://github.com/mattgodbolt). I
-updated it with support for line numbers and BASIC II.
+Convert tokenized BBC BASIC files to text. Originally by
+[Matt Godbolt](https://github.com/mattgodbolt). I updated it with
+support for line numbers and BASIC II.
 
 Execute with `-h` to get a help page.
 
@@ -54,7 +57,7 @@ names conform to a pattern. There's no standard pattern, though, so
 you may have to just list them out in the `.gitattributes` file in
 each folder. Either way, it's worth the effort!
 
-# dump_bbc_rom_info
+# dump_bbc_rom_info (Python 2.7)
 
 Simple tool that scans sideways ROM headers and prints info to stdout.
 I used this to have a quick look at [Wouter Scholten's monster ROM
@@ -62,7 +65,7 @@ archive](http://wouter.bbcmicro.net/bbc/bbc-software.html).
 
 # ssd_create
 
-Python 3 script that builds a single-sided disc image from .inf files.
+Build a single-sided disc image from .inf files.
 
 Supply list of files on the command line. Files that have a
 corresponding .inf file are assumed to be BBC files, and other files
@@ -76,12 +79,11 @@ multiple times, only the first occurrence counts.
 
 # ssd_extract
 
-Python 3 script that converts a SSD or DSD disc image into a folder of
-.inf files suitable for use with BeebLink. Supply name of disk on
-command line; it will create a BeebLink-compatible folder in the same
-folder, named after the disc image. Alternatively, specify `-0` or
-`-2` to have it output files from side 0 or 2 straight into the folder
-specified.
+Convert a SSD or DSD disc image into a folder of .inf files suitable
+for use with BeebLink. Supply name of disk on command line; it will
+create a BeebLink-compatible folder in the same folder, named after
+the disc image. Alternatively, specify `-0` or `-2` to have it output
+files from side 0 or 2 straight into the folder specified.
 
 Specify the `-b` switch to have it find tokenized BBC BASIC files,
 convert them to text with `BBCBasicToText.py`, and save them to a
@@ -89,7 +91,7 @@ separate `raw` folder.
 
 # bbc2png
 
-Python 3 script that converts a BBC screen dump into an image.
+Convert a BBC screen dump into an image.
 
 Supply name on command line of dump of screen RAM (as saved by, e.g.,
 `*SAVE X FFFF3000+5000`) and MODE the dump was taken from. Use `-o` to
@@ -101,7 +103,7 @@ MODE4 grab, `-p 13` to specify yellow on red.)
 (Maybe one day I'll figure out how to make animated GIFs so that
 flashing colours can be supported.)
 
-# smload_join
+# smload_join (Python 2.7)
 
 Join a service ROM and
 [relocatable modules](http://mdfs.net/Software/BBC/Modules/ModWriting),
@@ -113,7 +115,7 @@ to create new standalone ROMs.)
 
 [Example use](https://github.com/tom-seddon/beeblink/blob/5c13bcc5fd6d07d2d656df4129ef1fe694723fe8/rom/Makefile#L16).
 
-# smload_make_reloc
+# smload_make_reloc (Python 2.7)
 
 Make a
 [relocatable module](http://mdfs.net/Software/BBC/Modules/ModWriting)
@@ -127,13 +129,13 @@ with [JGH's tools](http://mdfs.net/Software/BBC/Modules/) too.
 
 [Example use](https://github.com/tom-seddon/startup_rom/blob/4193e31aff25d22b59f6ab099613ae7cedbe011c/Makefile#L13).
 
-# text2bbc, bbc2text
+# text2bbc, bbc2text (Python 2.7)
 
 Along the lines of [`dos2unix`](https://linux.die.net/man/1/dos2unix),
 convert files between modern standard line endings (lines ending with
 LF, or, on Windows, CR+LF) and BBC-style ones (lines ending with CR).
 
-# adf_create
+# adf_create (Python 2.7)
 
 Create an ADFS disk image from a set of DFS-style .inf files.
 
@@ -143,7 +145,7 @@ required.
 
 Specify file order in the same way as `ssd_create.py`.
 
-# adf_extract
+# adf_extract (Python 2.7)
 
 Extract an ADFS disk image to .inf files.
 
@@ -175,7 +177,7 @@ The PRG file's load address will be used as the BBC file's load
 address and execution address, and the output file name will be used
 to generate the BBC name in the .inf file.
 
-# mos_switch, mos_program _(Unix only)_
+# mos_switch, mos_program _(Unix only)_ (Python 2.7)
 
 Operate a MOS switcher addon.
 
