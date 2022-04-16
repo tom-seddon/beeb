@@ -31,9 +31,11 @@ def get_str(data,offset):
         i+=1
 
     if i>=len(data): return None
-    else: return result.encode("string_escape")
+    else: return result#result.encode("string_escape")
 
 def not_rom(fname,reason): warn("Not a ROM (%s): %s"%(reason,fname))
+
+def encode(x): return x.encode('string_escape')
 
 def main(options):
     for fname in options.fnames:
@@ -96,10 +98,10 @@ def main(options):
                        (bytes[relo_addr_offset+3]<<24))
 
         p("File: %s\n"%fname)
-        p("      ROM title: %s\n"%title)
+        p("      ROM title: %s\n"%encode(title))
         p("      Version: %02X%s\n"%(bytes[8],
-                                     "" if version is None else " (%s)"%version))
-        p("      Copyright: %s\n"%copyr)
+                                     "" if version is None else " (%s)"%encode(version)))
+        p("      Copyright: %s\n"%encode(copyr))
         p("      Flags: %c%c%c%c\n"%("S" if serv else "-",
                                      "L" if lang else "-",
                                      "R" if relo else "-",
