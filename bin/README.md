@@ -13,7 +13,7 @@ For more info, run each with `-h` on the command line.
 
 # BBCBasicToText
 
-Python 2.7 script that converts tokenized BBC BASIC files to text.
+Python 3 script that converts tokenized BBC BASIC files to text.
 Originally by [Matt Godbolt](https://github.com/mattgodbolt). I
 updated it with support for line numbers and BASIC II.
 
@@ -76,8 +76,8 @@ multiple times, only the first occurrence counts.
 
 # ssd_extract
 
-Python 2.x script that converts a SSD or DSD disc image into a folder
-of .inf files suitable for use with BeebLink. Supply name of disk on
+Python 3 script that converts a SSD or DSD disc image into a folder of
+.inf files suitable for use with BeebLink. Supply name of disk on
 command line; it will create a BeebLink-compatible folder in the same
 folder, named after the disc image. Alternatively, specify `-0` or
 `-2` to have it output files from side 0 or 2 straight into the folder

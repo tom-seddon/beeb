@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python3
 #
 # (c) 2007 Matt Godbolt.
 #
@@ -199,7 +199,7 @@ def Detokenise(line,basicv,add_labels,program):
     i=0
     tokenize=True
     while i<len(line):
-        c=ord(line[i])
+        c=line[i]
         #print line_text
         if tokenize and c>=0x7f:
             token=tokens[c-0x7f]
@@ -218,9 +218,8 @@ def Detokenise(line,basicv,add_labels,program):
                 
             elif token is None:
                 # line number
-                b=[ord(x) for x in line[i:i+4]]
-                msb=b[3]^((b[1]<<4)&0xFF)
-                lsb=b[2]^(((b[1]&0x30)<<2)&0xFF)
+                msb=line[i+3]^((line[i+1]<<4)&0xFF)
+                lsb=line[i+2]^(((line[i+1]&0x30)<<2)&0xFF)
                 line_number=(lsb<<0)|(msb<<8)
                 if add_labels:
                     program.add_label(line_number)
@@ -241,7 +240,7 @@ def Detokenise(line,basicv,add_labels,program):
         else:
             if c==ord('"'): tokenize=not tokenize
             if (c<32 or c>=128) and not options.codes: line_text+=' '
-            else: line_text+=line[i]
+            else: line_text+=chr(line[i])
             i+=1
 
     return line_text
@@ -255,11 +254,13 @@ def ReadLines(data):
     lines = []
     i=0
     while True:
-        if i+2>len(data): raise Exception, "Bad program"
-        if data[i]!='\r': raise Exception, "Bad program"
-        if data[i+1]=='\xff': break
-        
-        lineNumber, length = struct.unpack('>HB', data[i+1:i+4])
+        if i+2>len(data): raise Exception("Bad program")
+        if data[i]!=13: raise Exception("Bad program")
+        if data[i+1]==255: break
+
+        lineNumber=data[i+1]*256+data[i+2]
+        length=data[i+3]
+        # lineNumber, length = struct.unpack('>HB', data[i+1:i+4])
         lineData = data[i+4:i+length]
         lines.append([lineNumber, lineData])
         i+=length
@@ -324,7 +325,7 @@ if __name__ == "__main__":
 
     if len(args)>=1 and args[0]!="-":
         with open(args[0],"rb") as f: entireFile=f.read()
-    else: entireFile=sys.stdin.read()
+    else: entireFile=sys.stdin.buffer.read()
 
     program=DecodeProgram(entireFile,options.basicv,options.line_numbers)
     cr=chr(13) if options.cr else "\n"

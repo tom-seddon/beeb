@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import sys,argparse,struct,textwrap,os,os.path
 
 ##########################################################################
@@ -57,7 +57,7 @@ class Disc:
         self.num_sides=num_sides
         self.num_tracks=num_tracks
         self.num_sectors=num_sectors
-        self.data=[ord(x) for x in data]
+        self.data=data
 
     def read(self,
              side,
@@ -65,6 +65,17 @@ class Disc:
              sector,
              offset):
         return self.data[self.get_index(side,track,sector,offset)]
+
+    def read_bytes(self,
+                   side,
+                   track,
+                   sector,
+                   offset,
+                   count):
+        assert offset+count<=256
+        data=bytearray(count)
+        for i in range(count): data[i]=self.read(side,track,sector,offset+i)
+        return data
 
     def read_string(self,
                     side,
@@ -150,7 +161,8 @@ def main(options):
     for side in sides:
         drive=side*2
 
-        title=(image.read_string(side,0,0,0,8)+image.read_string(side,0,1,0,4)).replace(chr(0),"").strip()
+        title=(image.read_bytes(side,0,0,0,8)+
+               image.read_bytes(side,0,1,0,4)).replace(b'\x00',b'').strip()
 
         num_files=image.read(side,0,1,5)>>3
         option=(image.read(side,0,1,6)>>4)&3
@@ -161,11 +173,13 @@ def main(options):
         if options.drive0 or options.drive2: pc_folder=dest_dir
         else: pc_folder=os.path.join(dest_dir,"%d"%drive)
 
-        if title!='':
-            with mkdir_and_open(os.path.join(pc_folder,'.title'),'wt') as f: print>>f,title
+        if len(title)>0:
+            with mkdir_and_open(os.path.join(pc_folder,'.title'),'wb') as f:
+                f.write(title)
 
         if option!=0:
-            with mkdir_and_open(os.path.join(pc_folder,'.opt4'),'wt') as f: print>>f,option
+            with mkdir_and_open(os.path.join(pc_folder,'.opt4'),'wt') as f:
+                print(option,file=f)
 
         for file_idx in range(num_files):
             offset=8+file_idx*8
@@ -196,12 +210,15 @@ def main(options):
             start|=((topbits>>0)&3)<<8
 
             # Grab contents of this file
-            contents=[]
+            contents=bytearray(length)
             for i in range(length):
-                byte_sector=start+i/256
+                byte_sector=start+i//256
                 byte_offset=i%256
                 
-                contents.append(image.read(side,byte_sector/10,byte_sector%10,byte_offset))
+                contents[i]=image.read(side,
+                                       byte_sector//10,
+                                       byte_sector%10,
+                                       byte_offset)
 
             # Does it look like it could be a BASIC program?
             basic=False
@@ -238,24 +255,21 @@ def main(options):
                                                          load,
                                                          exec_,
                                                          length,
-                                                         start/10,
+                                                         start//10,
                                                          start%10,
                                                          " (BASIC)" if basic else ""))
-
-            #
-            contents_str="".join([chr(x) for x in contents])
 
             pc_name='%s.%s'%(get_pc_name(dir),get_pc_name(name))
             pc_path=os.path.join(pc_folder,pc_name)
             
             with mkdir_and_open(pc_path+'.inf','wt') as f:
-                print>>f,'%s.%s %08x %08x %s'%(dir,
-                                               name,
-                                               load,
-                                               exec_,
-                                               locked_str)
+                f.write('%s.%s %08x %08x %s'%(dir,
+                                              name,
+                                              load,
+                                              exec_,
+                                              locked_str))
                 
-            with mkdir_and_open(pc_path,"wb") as f: f.write(contents_str)
+            with mkdir_and_open(pc_path,"wb") as f: f.write(contents)
 
             # Write PC copy.
             if basic:
@@ -263,7 +277,7 @@ def main(options):
                                       'raw/%d'%drive,
                                       pc_name)
                 
-                decoded=BBCBasicToText.DecodeLines(contents_str)
+                decoded=BBCBasicToText.DecodeLines(contents)
                 for wrap in [False]:
                     ext=".wrap.txt" if wrap else ".txt"
                     with mkdir_and_open(raw_path+ext,'wb') as f:
