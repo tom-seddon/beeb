@@ -8,11 +8,10 @@ import argparse,sys,os.path,struct
 def main(options):
     with open(options.input_path,'rb') as f: data=f.read()
 
-    if len(data)<3:
-        print>>sys.stderr,'to small to be a C64 .PRG'
+    if len(data)<2:
+        print('FATAL: too small to be a C64 .PRG',file=sys.stderr)
         sys.exit(1)
 
-    
     addr=struct.unpack_from('<H',data)[0]
 
     if options.io: addr|=0xffff0000
@@ -22,7 +21,6 @@ def main(options):
               file=f)
     
     with open(options.output_path,'wb') as f: f.write(data[2:])
-    
 
 ##########################################################################
 ##########################################################################
