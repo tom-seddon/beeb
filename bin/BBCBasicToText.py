@@ -232,7 +232,7 @@ def Detokenise(line,basicv,add_labels,program):
             else:
                 # 2-byte token
                 i+=1
-                sub=ord(line[i])
+                sub=line[i]
                 text=token[sub-0x8e]
                 i+=1
 
