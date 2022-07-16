@@ -143,7 +143,8 @@ def main(options):
 
     # Figure out where to put files.
     dest_dir=options.dest_dir
-    if options.drive0 or options.drive2: pass
+    if dest_dir=='-': dest_dir=None
+    elif options.drive0 or options.drive2: pass
     else:
         if dest_dir is None:
             dest_dir=os.path.join(os.path.dirname(options.fname))
@@ -167,19 +168,22 @@ def main(options):
         num_files=image.read(side,0,1,5)>>3
         option=(image.read(side,0,1,6)>>4)&3
 
-        v("Side %d: \"%s\": Option %d, %d files\n"%(side,title,option,num_files))
+        if options.verbose or dest_dir is None:
+            print("Side %d: \"%s\": Option %d, %d files"%(side,title,option,num_files))
 
         # Write PC file.
-        if options.drive0 or options.drive2: pc_folder=dest_dir
-        else: pc_folder=os.path.join(dest_dir,"%d"%drive)
+        if dest_dir is None: pc_folder=None
+        else:
+            if options.drive0 or options.drive2: pc_folder=dest_dir
+            else: pc_folder=os.path.join(dest_dir,"%d"%drive)
 
-        if len(title)>0:
-            with mkdir_and_open(os.path.join(pc_folder,'.title'),'wb') as f:
-                f.write(title)
+            if len(title)>0:
+                with mkdir_and_open(os.path.join(pc_folder,'.title'),'wb') as f:
+                    f.write(title)
 
-        if option!=0:
-            with mkdir_and_open(os.path.join(pc_folder,'.opt4'),'wt') as f:
-                print(option,file=f)
+            if option!=0:
+                with mkdir_and_open(os.path.join(pc_folder,'.opt4'),'wt') as f:
+                    print(option,file=f)
 
         for file_idx in range(num_files):
             offset=8+file_idx*8
@@ -222,7 +226,7 @@ def main(options):
 
             # Does it look like it could be a BASIC program?
             basic=False
-            if options.basic and len(contents)>0:
+            if options.basic or options.verbose or dest_dir is None:
                 i=0
                 while True:
                     if i>=len(contents):
@@ -245,52 +249,54 @@ def main(options):
                         break
                     
                     i+=contents[i+3]#skip rest of line
-                    
 
             # *INFO
             locked_str="L" if locked else " "
-            v("%s.%-7s %c %08X %08X %08X (T%d S%d)%s\n"%(dir,
-                                                         name,
-                                                         locked_str,
-                                                         load,
-                                                         exec_,
-                                                         length,
-                                                         start//10,
-                                                         start%10,
-                                                         " (BASIC)" if basic else ""))
+            if options.verbose or dest_dir is None:
+                print("%s.%-7s %c %08X %08X %08X (T%d S%d)%s"%(dir,
+                                                               name,
+                                                               locked_str,
+                                                               load,
+                                                               exec_,
+                                                               length,
+                                                               start//10,
+                                                               start%10,
+                                                               " (BASIC)" if basic else ""))
 
             pc_name='%s.%s'%(get_pc_name(dir),get_pc_name(name))
-            pc_path=os.path.join(pc_folder,pc_name)
-            
-            with mkdir_and_open(pc_path+'.inf','wt') as f:
-                f.write('%s.%s %08x %08x %s'%(dir,
-                                              name,
-                                              load,
-                                              exec_,
-                                              locked_str))
-                
-            with mkdir_and_open(pc_path,"wb") as f: f.write(contents)
 
-            # Write PC copy.
-            if basic:
-                raw_path=os.path.join(dest_dir,
-                                      'raw/%d'%drive,
-                                      pc_name)
-                
-                decoded=BBCBasicToText.DecodeLines(contents)
-                for wrap in [False]:
-                    ext=".wrap.txt" if wrap else ".txt"
-                    with mkdir_and_open(raw_path+ext,'wb') as f:
-                        # Produce output like the BASIC Editor (readability
-                        # not guaranteed)
-                        for num,text in decoded:
-                            wrap_width=64 if wrap else 65536
-                            wrapped=textwrap.wrap(wrap_width)
-                            num_text="%5d "%num
-                            for i in range(len(wrapped)):
-                                if i==0: prefix=num_text
-                                else: prefix=" "*len(num_text)
-                                print>>f,"%s%s"%(prefix,wrapped[i])
+            if pc_folder is not None:
+                pc_path=os.path.join(pc_folder,pc_name)
+
+                with mkdir_and_open(pc_path+'.inf','wt') as f:
+                    f.write('%s.%s %08x %08x %s'%(dir,
+                                                  name,
+                                                  load,
+                                                  exec_,
+                                                  locked_str))
+
+                with mkdir_and_open(pc_path,"wb") as f: f.write(contents)
+
+                # Write PC copy.
+                if basic:
+                    raw_path=os.path.join(dest_dir,
+                                          'raw/%d'%drive,
+                                          pc_name)
+
+                    decoded=BBCBasicToText.DecodeLines(contents)
+                    for wrap in [False]:
+                        ext=".wrap.txt" if wrap else ".txt"
+                        with mkdir_and_open(raw_path+ext,'wb') as f:
+                            # Produce output like the BASIC Editor (readability
+                            # not guaranteed)
+                            for num,text in decoded:
+                                wrap_width=64 if wrap else 65536
+                                wrapped=textwrap.wrap(wrap_width)
+                                num_text="%5d "%num
+                                for i in range(len(wrapped)):
+                                    if i==0: prefix=num_text
+                                    else: prefix=" "*len(num_text)
+                                    print>>f,"%s%s"%(prefix,wrapped[i])
 
 ##########################################################################
 ##########################################################################
@@ -318,7 +324,7 @@ if __name__=="__main__":
                         dest='dest_dir',
                         default='.',
                         metavar="DIR",
-                        help="where to put files. Default: %(default)s")
+                        help="where to write files, or - not to write anything. Default: %(default)s")
 
     parser.add_argument("-0",
                         default=None,
