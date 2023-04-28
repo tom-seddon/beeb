@@ -6,6 +6,7 @@ import argparse,sys,collections,re
 
 def fatal(msg):
     sys.stderr.write(msg)
+    sys.stderr.write('\n')
     sys.exit(1)
 
 ##########################################################################
@@ -15,15 +16,30 @@ TAB=9
 SPACE=32
 COMMENT_CHAR=ord(';')
 LABEL_TERMINATOR=ord(':')
+DQUOTE=ord('"')
+SQUOTE=ord("'")
+SEGMENT_TERMINATOR=ord(':')
+OFFSET_TERMINATOR=ord(' ')
 
 DATA_XREF_prefix=b'; DATA XREF: '
 CODE_XREF_prefix=b'; CODE XREF: '
 
+# SEGMENT_PREFIX_RE=re.compile('^(?P<segment>[0-9A-Za-z_]+):(?P<addr>[0-9A-Fa-f]+) (?P<rest>.*)$')
+
 class Line:
-    def __init__(self):
+    def __init__(self,number,segment,offset):
+        self._number=number
         self.indented=False
+        self._segment=segment
+        self._offset=offset
         self.parts=[]
         self.comment=None
+
+    @property
+    def offset(self): return self._offset
+
+    @property
+    def number(self): return self._number
 
     def is_empty(self):
         return len(self.parts)==0 and self.comment is None
@@ -36,6 +52,9 @@ def get_lines(data,options):
     line_number=1
     lines=[]
 
+    def fatal_line(message):
+        fatal('%s:%d: %s'%(options.input_path,line_number,message))
+
     # Pass 1 - generate array of Line objects.
     while bol_idx<len(data):
         eol_idx=bol_idx
@@ -45,35 +64,78 @@ def get_lines(data,options):
         # subsequent checks for tabs that are now redundant
         line_data=data[bol_idx:eol_idx].expandtabs()
 
+        segment=''
+        ch_idx=0
+        while (ch_idx<len(line_data) and
+               line_data[ch_idx]!=SEGMENT_TERMINATOR):
+            segment+=chr(line_data[ch_idx])
+            ch_idx+=1
+
+        if ch_idx>=len(line_data): fatal_line('missing segment prefix')
+
+        ch_idx+=1               # skip ':'
+
+        offset=''
+        while (ch_idx<len(line_data) and
+               line_data[ch_idx]!=OFFSET_TERMINATOR):
+            offset+=chr(line_data[ch_idx])
+            ch_idx+=1
+
+        try:
+            offset=int(offset,16)
+        except ValueError: fatal_line('invalid offset: %s'%offset)
+
+        if ch_idx<len(line_data):
+            ch_idx+=1           # skip ' '
+
         # split into space-separated parts, plus comment (if any).
-        line=Line()
+        line=Line(line_number,segment,offset)
         lines.append(line)
         in_part=False
 
-        for ch_idx,ch in enumerate(line_data):
-            if ch==TAB or ch==SPACE:
-                if ch_idx==0: line.indented=True
-                in_part=False
-            elif ch==COMMENT_CHAR:
-                in_part=False
-                line.comment=line_data[ch_idx:]
-                break
-            else:
-                if ch<32 or ch>126:
-                    fatal('%s:%d:%d: bad char: %d (0x%x)'%(options.input_path,
-                                                           line_number,
-                                                           ch_idx+1,
-                                                           ch,ch))
+        str_char=None
 
-                if not in_part:
-                    line.parts.append('')
-                    in_part=True
-                    
+        next_is_first_char=True
+        for ch_idx in range(ch_idx,len(line_data)):
+            is_first_char=next_is_first_char
+            next_is_first_char=False
+            
+            ch=line_data[ch_idx]
+            if str_char is not None:
+                # in string...
                 line.parts[-1]+=chr(ch)
-
-                # Handle stuff like "fred:.BYTE blahblah'
-                if ch==LABEL_TERMINATOR and len(line.parts)==1:
+                if ch==str_char: str_char=None
+            else:
+                if ch==TAB or ch==SPACE:
+                    if is_first_char: line.indented=True
                     in_part=False
+                elif ch==COMMENT_CHAR:
+                    in_part=False
+                    line.comment=line_data[ch_idx:]
+                    # print('%d: comment=``%s\'\''%(line_number,line.comment))
+                    break
+                else:
+                    if ch<32 or ch>126:
+                        fatal('%s:%d:%d: bad char: %d (0x%x)'%(options.input_path,
+                                                               line_number,
+                                                               ch_idx+1,
+                                                               ch,ch))
+
+                    if not in_part:
+                        line.parts.append('')
+                        in_part=True
+                    
+                    line.parts[-1]+=chr(ch)
+
+                    if ch==DQUOTE or ch==SQUOTE:
+                        str_char=ch
+                    elif ch==LABEL_TERMINATOR and len(line.parts)==1:
+                        # Handle stuff like "fred:.BYTE blahblah'
+                        in_part=False
+
+        if str_char is not None:
+            fatal('%s:%d: unterminated string'%(options.input_path,
+                                                line_number))
 
         line_number+=1
 
@@ -83,7 +145,7 @@ def get_lines(data,options):
             (data[bol_idx]==10 or data[bol_idx]==13)
             and data[bol_idx]!=data[eol_idx]):
             bol_idx+=1
-            
+
     return lines
 
 ##########################################################################
@@ -99,24 +161,31 @@ def fix_up_mnemonics(lines,options):
         elif part=='.ds': return '.fill'
         elif part=='.db': return '.byte'
         elif part=='.dw': return '.word'
+        elif part=='.fcc': return '.text'
         elif part=='A': return 'a'
         else:
-            # 0ffh and so on
-            part=re.sub('0([A-Fa-f][0-9A-Fa-f]*)h',
-                        '$\\1',
-                        part)
+            # hex - 0ffh and so on
+            part=re.sub('^0([A-Fa-f][0-9A-Fa-f]*)h','$\\1',part)
+            part=re.sub('([^A-Za-z0-9_])0([A-Fa-f][0-9A-Fa-f]*)h','\\1$\\2',part)
 
-            # 91h and the like
-            part=re.sub('([1-9][0-9A-Fa-f]*)h',
-                        '$\\1',
-                        part)
+            # hex - 91h and the like
+            part=re.sub('^([1-9][0-9A-Fa-f]*)h','$\\1',part)
+            part=re.sub('([^A-Za-z0-9_])([1-9][0-9A-Fa-f]*)h','\\1$\\2',part)
+
+            # binary - 1b etc.
+            part=re.sub('^([01]+)b','%\\1',part)
+            part=re.sub('([^A-Za-z0-9_])([01]+)b','\\1%\\2',part)
             
             if part.endswith(',X') or part.endswith(',Y'):
                 return part[:-2]+part[-2:].lower()
             else: return part
 
     for line in lines:
-        line.parts=[get_fixed_up_part(part) for part in line.parts]
+        for i in range(len(line.parts)):
+            if i==0 and line.parts[i].endswith(':'):
+                # Don't fix up labels!
+                pass
+            else: line.parts[i]=get_fixed_up_part(line.parts[i])
 
     # Possibly turn .byte into .char
     for line in lines:
@@ -245,23 +314,52 @@ def produce_output(lines,f_out,options):
     opcode_column=16
     comment_column=32
 
+    need_org=True
     last_line_actual_comment_column=None
-    for line in lines:
+    for line_idx,line in enumerate(lines):
         actual_comment_column=None
-        
-        s=''
-        if line.indented: s+=opcode_column*' '
 
-        if len(line.parts)>0:
+        if len(options.code_regions)>0:
+            code=False
+            for begin,end in options.code_regions:
+                if (line.offset is not None and
+                    line.offset>=begin and
+                    line.offset<end):
+                    code=True
+                    break
+            if not code and line.offset is not None: need_org=True
+        else: code=True
+
+        if not code:
             if (not line.indented and
-                len(line.parts)>1 and
+                len(line.parts)>0 and
                 line.parts[0].endswith(':')):
-                s+=line.parts[0]
-                while len(s)<opcode_column: s+=' '
-                s+=' '.join(line.parts[1:])
-            else: s+=' '.join(line.parts)
+                s='%s=$%x'%(line.parts[0][:-1],line.offset)
+            elif line.number is None:
+                # blank line
+                s=''
+            else:
+                # simply don't print anything at all in this case.
+                s=None
+        else:
+            s=''
+            if need_org:
+                f_out.write('*=$%x\n'%line.offset)
+                need_org=False
+            
+            if line.indented: s+=opcode_column*' '
+
+            if len(line.parts)>0:
+                if (not line.indented and
+                    len(line.parts)>1 and
+                    line.parts[0].endswith(':')):
+                    s+=line.parts[0]
+                    while len(s)<opcode_column: s+=' '
+                    s+=' '.join(line.parts[1:])
+                else: s+=' '.join(line.parts)
         
         if line.comment is not None:
+            if s is None: s=''
             if (line.indented and
                 (len(line.parts)>0 or
                  last_line_actual_comment_column is not None)):
@@ -273,10 +371,13 @@ def produce_output(lines,f_out,options):
             s+=line.comment
 
         last_line_actual_comment_column=actual_comment_column
+        last_line_was_code=code
 
-        f_out.write(s)
-        #f_out.write(' [[indented=%d actual_comment_column=%s]]'%(line.indented,actual_comment_column))
-        f_out.write('\n')
+        if s is not None:
+            f_out.write(s)
+            #if line.offset is not None: f_out.write(' ; offset=$%04x'%line.offset)
+            #f_out.write(' [[indented=%d actual_comment_column=%s]]'%(line.indented,actual_comment_column))
+            f_out.write('\n')
 
 ##########################################################################
 ##########################################################################
@@ -292,6 +393,7 @@ def fix_up_comments_2(lines,options):
         '; Base Address:',
         '; ; Processor:',
         '; ; Target assembler:',
+        '; Segment type: ',
     ]
 
     uninteresting_comment_parts=[
@@ -377,11 +479,11 @@ def tidy_up_empty_lines(lines,options):
             len(lines[i].parts)==0 and
             lines[i].comment==SEPARATOR_STRING):
             if not lines[i-1].is_empty():
-                lines.insert(i,Line())
+                lines.insert(i,Line(None,None,None))
                 i+=1
                 
             if not lines[i+1].is_empty():
-                lines.insert(i+1,Line())
+                lines.insert(i+1,Line(None,None,None))
                 
             i+=1
         else: i+=1
@@ -415,13 +517,17 @@ def convert_avocet(options):
 ##########################################################################
 ##########################################################################
 
+# http://stackoverflow.com/questions/25513043/python-argparse-fails-to-parse-hex-formatting-to-int-type
+def auto_int(x): return int(x,0)
+
 def main(argv):
     parser=argparse.ArgumentParser()
 
     parser.add_argument('--no-blocks',action='store_true',help='''don't emit .block/.endblock directives''')
     parser.add_argument('--65c02',dest='cmos',action='store_true',help='''support 65c02 mnemonics''')
     parser.add_argument('-o','--output',dest='output_path',metavar='FILE',help='''write output to %(metavar)s''')
-    parser.add_argument('input_path',metavar='FILE',help='''read input from %(metavar)s''')
+    parser.add_argument('input_path',metavar='FILE',help='''read .lst input from %(metavar)s''')
+    parser.add_argument('-c','--code',dest='code_regions',default=[],nargs=2,metavar=('BEGIN','END'),type=auto_int,action='append',help='''treat region from BEGIN to END as the code''')
     convert_avocet(parser.parse_args(argv))
 
 ##########################################################################
