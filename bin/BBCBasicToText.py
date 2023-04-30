@@ -217,9 +217,7 @@ class Program:
 ##########################################################################
 ##########################################################################
 
-def Detokenise(line,basicv,add_labels,program):
-    global options
-    
+def Detokenise(line,add_labels,program,options):
     line_text=""
     i=0
     tokenize=True
@@ -232,7 +230,7 @@ def Detokenise(line,basicv,add_labels,program):
 
             # if it's a tuple, pick BASIC 2 or BASIC V part.
             if isinstance(token,SpecialToken):
-                if basicv: token=token.basic5
+                if options.basicv: token=token.basic5
                 elif options.basic2: token=token.basic2
                 else: token=token.basic4
             
@@ -280,9 +278,7 @@ def Detokenise(line,basicv,add_labels,program):
 ##########################################################################
 ##########################################################################
 
-def ReadLines(data):
-    global options
-    
+def ReadLines(data,options):
     """Returns a list of [line number, tokenised line] from a binary
        BBC BASIC V format file."""
     lines = []
@@ -309,16 +305,17 @@ def ReadLines(data):
 ##########################################################################
 ##########################################################################
 
-def DecodeProgram(data,basicv=False,line_numbers=True):
+def DecodeProgram(data,options):
     program=Program()
 
-    lines=ReadLines(data)
+    lines=ReadLines(data,options)
 
-    if not line_numbers:
-        for num,line in lines: Detokenise(line,basicv,True,program)
+    if not options.line_numbers:
+        for num,line in lines:
+            Detokenise(line,True,program,options)
 
     for num,line in lines:
-        text=Detokenise(line,basicv,False,program)
+        text=Detokenise(line,False,program,options)
         program.add_line(num,text)
 
     return program
@@ -326,21 +323,12 @@ def DecodeProgram(data,basicv=False,line_numbers=True):
 ##########################################################################
 ##########################################################################
 
-def DecodeLines(data,basicv=False,line_numbers=True):
-    program=DecodeProgram(data,basicv,line_numbers)
-    return program.lines
-
-##########################################################################
-##########################################################################
-
 def main(argv):
-    global options
-    
     parser=optparse.OptionParser(usage="%prog [options] INPUT (OUTPUT)\n\n If no INPUT specified, or INPUT is -, read from stdin. If no OUTPUT specified, print output to stdout.")
     parser.add_option('-2',
                       '--basic2',
                       action='store_true',
-                      help='when interpreting as 6502 BASIC, list same as 6502 BASIC II rather than 6502 BASIC IV',
+                      help='list same as 6502 BASIC II rather than 6502 BASIC IV',
                       default=False)
     parser.add_option("-5",
                       "--basicv",
@@ -370,7 +358,7 @@ def main(argv):
         with open(args[0],"rb") as f: entireFile=f.read()
     else: entireFile=sys.stdin.buffer.read()
 
-    program=DecodeProgram(entireFile,options.basicv,options.line_numbers)
+    program=DecodeProgram(entireFile,options)
 
     if options.codes:
         if len(args)>=2: output=open(args[1],'wb')
