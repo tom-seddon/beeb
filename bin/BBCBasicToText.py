@@ -278,26 +278,23 @@ def Detokenise(line,add_labels,program,options):
 ##########################################################################
 ##########################################################################
 
+def bad_program(): raise Exception('Bad program')
+
 def ReadLines(data,options):
     """Returns a list of [line number, tokenised line] from a binary
        BBC BASIC V format file."""
     lines = []
     i=0
     while True:
-        if i+2>len(data): raise Exception("Bad program")
-        if data[i]!=13: raise Exception("Bad program")
+        if i+2>len(data): bad_program()
+        if data[i]!=13: bad_program()
         if data[i+1]==255: break
 
         lineNumber=data[i+1]*256+data[i+2]
         length=data[i+3]
         # lineNumber, length = struct.unpack('>HB', data[i+1:i+4])
         lineData = data[i+4:i+length]
-        if not options.basic2 and len(lineData)==0:
-            # BASIC IV simply skips empty lines when listing! They're
-            # still there, though. You can see them when listing in
-            # BASIC II.
-            pass
-        else: lines.append([lineNumber, lineData])
+        lines.append([lineNumber, lineData])
         i+=length
         #data = data[length:]
     return lines
@@ -308,15 +305,46 @@ def ReadLines(data,options):
 def DecodeProgram(data,options):
     program=Program()
 
-    lines=ReadLines(data,options)
+    if options.perfect:
+        if not options.line_numbers:
+            raise Exception('--perfect and -n are mutually exclusive')
 
-    if not options.line_numbers:
+        i=0
+        while i<len(data):
+            # check for CR
+            if data[i+0]!=13: bad_program()
+
+            # check for EOP marker
+            if i+1>=len(data): bad_program()
+            if data[i+1]&0x80: break
+
+            # read line header
+            if i+4>=len(data): bad_program()
+            number=data[i+1]*256+data[i+2]
+            size=data[i+3]
+            if i+size>=len(data): bad_program()
+
+            # LIST seems to ignore the size - it just keeps going
+            # until it finds a CR.
+            j=i+4
+            while j<len(data) and data[j]!=13: j+=1
+            if j>=len(data): bad_program()
+
+            line=data[i+4:j]
+            text=Detokenise(line,False,program,options)
+            program.add_line(number,text)
+
+            i=j
+    else:
+        lines=ReadLines(data,options)
+
+        if not options.line_numbers:
+            for num,line in lines:
+                Detokenise(line,True,program,options)
+
         for num,line in lines:
-            Detokenise(line,True,program,options)
-
-    for num,line in lines:
-        text=Detokenise(line,False,program,options)
-        program.add_line(num,text)
+            text=Detokenise(line,False,program,options)
+            program.add_line(num,text)
 
     return program
 
@@ -339,6 +367,9 @@ def main(argv):
                       "--cr",
                       action="store_true",
                       help="separate lines with ASCII 13 (suitable for *EXEC)")
+    parser.add_option('--perfect',
+                      action='store_true',
+                      help='''produce output that perfectly matches BBC BASIC, even when this would be less useful (not compatible with -n)''')
     parser.add_option("--codes",
                       action="store_true",
                       help="pass though control codes")
@@ -349,10 +380,6 @@ def main(argv):
                       help="print @ labels, not line numbers (hack for diffs)")
                       
     options,args=parser.parse_args(argv)
-    # if len(args)<1:
-    #     parser.print_help()
-    #     print>>sys.stderr,"FATAL: Must specify input file."
-    #     sys.exit(1)
 
     if len(args)>=1 and args[0]!="-":
         with open(args[0],"rb") as f: entireFile=f.read()
@@ -374,6 +401,12 @@ def main(argv):
         else: output.write(str)
     
     for num,text in program.lines:
+        if not options.basic2 and len(text)==0:
+            # BASIC IV simply skips empty lines when listing! They're
+            # still there, though. You can see them when listing in
+            # BASIC II.
+            continue
+        
         if num in program.labels:
             write('@%04d:%s'%(program.labels[num],cr))
 
