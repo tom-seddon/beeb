@@ -9,7 +9,7 @@
 # Some information obtained from source code from RISC OS Open.
 # v0.01 - first release.  Doesn't deal with GOTO line numbers.
 
-import struct, re, getopt, sys,optparse
+import struct, re, getopt, sys,optparse,collections
 from types import *
 
 ##########################################################################
@@ -40,10 +40,33 @@ stmtTokens= [
 ##########################################################################
 ##########################################################################
 
+class SpecialToken:
+    def __init__(self,basic2,basic5):
+        assert basic2 is not None
+        assert basic5 is not None
+        self._basic2=basic2
+        self._basic5=basic5
+        self._basic4=None
+
+    def with_basic4_case(self,basic4):
+        self._basic4=basic4
+        return self
+
+    @property
+    def basic2(self): return self._basic2
+
+    @property
+    def basic4(self):
+        if self._basic4 is not None: return self._basic4
+        else: return self._basic2
+
+    @property
+    def basic5(self): return self._basic5
+
 # The list of BBC BASIC V tokens:
 # Base tokens, starting at 0x7f
 tokens = [
-    ("<&7F>",'OTHERWISE'),#0x7f
+    SpecialToken("\x7f",'OTHERWISE'),#0x7f
     'AND',#0x80
     'DIV',#0x81
     'EOR',#0x82
@@ -114,15 +137,15 @@ tokens = [
     'STR$',#0xc3
     'STRING$(',#0xc4
     'EOF',#0xc5
-    ("AUTO",cfnTokens),#0xc6
-    ("DELETE",comTokens),#0xc7
-    ("LOAD",stmtTokens),#0xc8
-    ("LIST",'WHEN'),#0xc9
-    ("NEW",'OF'),#0xca
-    ("OLD",'ENDCASE'),#0xcb
-    'ELSE',#0xcc
-    ("SAVE",'ENDIF'),#0xcd
-    ("<&CE>",'ENDWHILE'),#0xce
+    SpecialToken("AUTO",cfnTokens),#0xc6
+    SpecialToken("DELETE",comTokens),#0xc7
+    SpecialToken("LOAD",stmtTokens),#0xc8
+    SpecialToken("LIST",'WHEN'),#0xc9
+    SpecialToken("NEW",'OF'),#0xca
+    SpecialToken("OLD",'ENDCASE'),#0xcb
+    SpecialToken('RENUMBER','ELSE'),#0xcc
+    SpecialToken("SAVE",'ENDIF'),#0xcd
+    SpecialToken("",'ENDWHILE').with_basic4_case('EDIT'),#0xce
     'PTR',#0xcf
     'PAGE',#0xd0
     'TIME',#0xd1
@@ -195,9 +218,12 @@ class Program:
 ##########################################################################
 
 def Detokenise(line,basicv,add_labels,program):
+    global options
+    
     line_text=""
     i=0
     tokenize=True
+    rem=False
     while i<len(line):
         c=line[i]
         #print line_text
@@ -205,17 +231,19 @@ def Detokenise(line,basicv,add_labels,program):
             token=tokens[c-0x7f]
 
             # if it's a tuple, pick BASIC 2 or BASIC V part.
-            if isinstance(token,tuple):
-                if basicv: token=token[1]
-                else: token=token[0]
+            if isinstance(token,SpecialToken):
+                if basicv: token=token.basic5
+                elif options.basic2: token=token.basic2
+                else: token=token.basic4
             
             if isinstance(token,str):
                 text=token
                 i+=1
 
                 # Special case
-                if text=="REM": tokenize=False
-                
+                if not options.basic2 and text=="REM":
+                    tokenize=False
+                    rem=True
             elif token is None:
                 # line number
                 msb=line[i+3]^((line[i+1]<<4)&0xFF)
@@ -238,7 +266,11 @@ def Detokenise(line,basicv,add_labels,program):
 
             line_text+=text
         else:
-            if c==ord('"'): tokenize=not tokenize
+            if c==ord('"'):
+                if rem:
+                    # do nothing
+                    pass
+                else: tokenize=not tokenize
             if (c<32 or c>=128) and not options.codes: line_text+=' '
             else: line_text+=chr(line[i])
             i+=1
@@ -249,6 +281,8 @@ def Detokenise(line,basicv,add_labels,program):
 ##########################################################################
 
 def ReadLines(data):
+    global options
+    
     """Returns a list of [line number, tokenised line] from a binary
        BBC BASIC V format file."""
     lines = []
@@ -262,7 +296,12 @@ def ReadLines(data):
         length=data[i+3]
         # lineNumber, length = struct.unpack('>HB', data[i+1:i+4])
         lineData = data[i+4:i+length]
-        lines.append([lineNumber, lineData])
+        if not options.basic2 and len(lineData)==0:
+            # BASIC IV simply skips empty lines when listing! They're
+            # still there, though. You can see them when listing in
+            # BASIC II.
+            pass
+        else: lines.append([lineNumber, lineData])
         i+=length
         #data = data[length:]
     return lines
@@ -293,9 +332,16 @@ def DecodeLines(data,basicv=False,line_numbers=True):
 
 ##########################################################################
 ##########################################################################
-                 
-if __name__ == "__main__":
+
+def main(argv):
+    global options
+    
     parser=optparse.OptionParser(usage="%prog [options] INPUT (OUTPUT)\n\n If no INPUT specified, or INPUT is -, read from stdin. If no OUTPUT specified, print output to stdout.")
+    parser.add_option('-2',
+                      '--basic2',
+                      action='store_true',
+                      help='when interpreting as 6502 BASIC, list same as 6502 BASIC II rather than 6502 BASIC IV',
+                      default=False)
     parser.add_option("-5",
                       "--basicv",
                       action="store_true",
@@ -314,27 +360,40 @@ if __name__ == "__main__":
                       dest='line_numbers',
                       help="print @ labels, not line numbers (hack for diffs)")
                       
-    options,args=parser.parse_args()
+    options,args=parser.parse_args(argv)
     # if len(args)<1:
     #     parser.print_help()
     #     print>>sys.stderr,"FATAL: Must specify input file."
     #     sys.exit(1)
-
-    if len(args)>=2: output = open(args[1], 'w')
-    else: output=sys.stdout
 
     if len(args)>=1 and args[0]!="-":
         with open(args[0],"rb") as f: entireFile=f.read()
     else: entireFile=sys.stdin.buffer.read()
 
     program=DecodeProgram(entireFile,options.basicv,options.line_numbers)
+
+    if options.codes:
+        if len(args)>=2: output=open(args[1],'wb')
+        else: raise Exception('can\'t output codes to stdout')
+    else:
+        if len(args)>=2: output=open(args[1],'wt')
+        else: output=sys.stdout
+        
     cr=chr(13) if options.cr else "\n"
+
+    def write(str):
+        if options.codes: output.write(str.encode('latin_1'))
+        else: output.write(str)
+    
     for num,text in program.lines:
         if num in program.labels:
-            output.write('@%04d:%s'%(program.labels[num],cr))
+            write('@%04d:%s'%(program.labels[num],cr))
 
-        if options.line_numbers: output.write('%d'%num)
+        if options.line_numbers: write('%5d'%num)
 
-        output.write('%s%s'%(text,cr))
+        write('%s%s'%(text,cr))
 
     if output is not sys.stdout: output.close()
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
