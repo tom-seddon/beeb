@@ -82,8 +82,17 @@ def main2(options):
     # non-HI BASIC ROM in an emulator with PAGE=&E00.
     max_basic_size=0x8000-0xe00
 
+    last_dirpath_length=0
+    
     for folder in folders:
         for dirpath,dirnames,filenames in os.walk(folder):
+            if sys.stdout.isatty():
+                sys.stdout.write('\r%s'%dirpath)
+                if len(dirpath)<last_dirpath_length:
+                    sys.stdout.write((last_dirpath_length-len(dirpath))*' ')
+                sys.stdout.flush()
+                last_dirpath_length=len(dirpath)
+                
             for filename in filenames:
                 path=os.path.join(dirpath,filename)
                 
@@ -120,6 +129,7 @@ def main2(options):
                     if hash not in unique_files_by_hash:
                         unique_files_by_hash[hash]=UniqueBASICFile(path,data,basic_size)
 
+    print()
     print('found %d/%d unique BBC BASIC files'%(len(unique_files_by_hash),
                                                 total_num_basic_files))
 
@@ -128,7 +138,7 @@ def main2(options):
         mismatches=[]
 
         bbtt_args=['--codes','--perfect']
-        bt_args=['--ascii','--input-tokenised']
+        bt_args=['--ascii','--input-tokenised','--output-binary']
         
         if not os.path.isdir(options.output_folder):
             os.makedirs(options.output_folder)
@@ -160,7 +170,7 @@ def main2(options):
                 BBCBasicToText.main(bbtt_args+[original_path,bbtt_text_path])
 
                 bt_text_path=os.path.join(options.output_folder,'%s.basictool.%s.txt'%(kv[0],ver))
-                cmd_line=['basictool']+bt_args+[original_path,bt_text_path]
+                cmd_line=[options.basictool]+bt_args+[original_path,bt_text_path]
                 retcode=subprocess.call(cmd_line,shell=False)
                 if retcode!=0: basictool_failures.append(i)
 
@@ -195,6 +205,8 @@ def main(argv):
     parser.add_argument('-o','--output-folder',metavar='FOLDER',default='./corpus',help='''output corpus to %(metavar)s. Default: %(default)s''')
 
     parser.add_argument('-b','--beeblink-config',metavar='PATH',help='''read BeebLink config from %(metavar)s and look for BBC BASIC file(s) in its volume folders''')
+
+    parser.add_argument('--basictool',metavar='PATH',default='basictool',help='''run basictool as %(metavar)s. Default: %(default)s''')
 
     parser.add_argument('folders',nargs='*',metavar='PATH',help='''look for BBC BASIC file(s) in %(metavar)s''')
 
