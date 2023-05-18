@@ -153,6 +153,26 @@ key_f6=$75
 key_f7=$16
 key_f8=$76
 key_f9=$77
+key_numpad_0=$6a
+key_numpad_1=$6b
+key_numpad_2=$7c
+key_numpad_3=$6c
+key_numpad_4=$7a
+key_numpad_5=$7b
+key_numpad_6=$1a
+key_numpad_7=$1b
+key_numpad_8=$2a
+key_numpad_9=$2b
+key_numpad_plus=$3a
+key_numpad_minus=$3b
+key_numpad_divide=$4a
+key_numpad_hash=$5a
+key_numpad_multiply=$5b
+key_numpad_comma=$5c
+key_numpad_return=$3c
+key_numpad_delete=$4b
+key_numpad_stop=$4c
+                
                 .endweak
 
 inkey: .sfunction _key,(-(_key+1))&$ff
