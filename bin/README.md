@@ -173,9 +173,34 @@ constraints of the mode specified.
 Convert a C64 PRG file, as output by
 [64tass](http://tass64.sourceforge.net/), into a BBC data/inf pair.
 
-The PRG file's load address will be used as the BBC file's load
-address and execution address, and the output file name will be used
-to generate the BBC name in the .inf file.
+The PRG file's load address (stored in the first 2 bytes of the PRG
+file) will be used as the BBC file's load address and execution
+address, and the output file name will be used to generate the BBC
+name in the .inf file.
+
+## Separate execution address
+
+If you don't mind a small amount of hassle, you can have a separate
+execution address. Use a `.word` to get 64tass to output the desired
+execution address in the first 2 bytes of the output, and supply
+`--execution-address` on the prg2bbc command line.
+
+The PRG file (which will be even more invalid in C64 terms than usual)
+will then contain the 2-byte load address in the first 2 bytes, and
+the 2-byte execution address in the second byte.
+
+Because you've added an extra 2 bytes to the output, the ORG will have
+to be 2 bytes lower. prg2bbc will cancel this out by adding 2 to the
+PRG's load address.
+
+This is easier to actually use than it is to explain. For an example,
+see
+https://github.com/tom-seddon/256_bytes/blob/f74a79e2ab02cfba2ccb5481a61632f12e00e363/nova_2023_1.s65#L12 -
+note the `-2` in the org, and the `.word entry` that specifies the
+execution entry point.
+
+(Makefile:
+https://github.com/tom-seddon/256_bytes/blob/f74a79e2ab02cfba2ccb5481a61632f12e00e363/Makefile#L63)
 
 # mos_switch, mos_program _(Unix only)_ (Python 2.7)
 
