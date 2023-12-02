@@ -88,13 +88,15 @@ def get_lines(data,options):
         if ch_idx<len(line_data):
             ch_idx+=1           # skip ' '
 
+        ch_idx+=options.num_opcode_bytes*3
+
         # split into space-separated parts, plus comment (if any).
         line=Line(line_number,segment,offset)
         lines.append(line)
         in_part=False
 
         str_char=None
-
+        
         next_is_first_char=True
         for ch_idx in range(ch_idx,len(line_data)):
             is_first_char=next_is_first_char
@@ -528,6 +530,7 @@ def main(argv):
     parser.add_argument('-o','--output',dest='output_path',metavar='FILE',help='''write output to %(metavar)s''')
     parser.add_argument('input_path',metavar='FILE',help='''read .lst input from %(metavar)s''')
     parser.add_argument('-c','--code',dest='code_regions',default=[],nargs=2,metavar=('BEGIN','END'),type=auto_int,action='append',help='''treat region from BEGIN to END as the code''')
+    parser.add_argument('-n',dest='num_opcode_bytes',default=0,type=auto_int,metavar='COUNT',help='''strip %(metavar)s opcode byte(s) from start of each line. Default: %(default)s''')
     convert_avocet(parser.parse_args(argv))
 
 ##########################################################################
