@@ -208,3 +208,8 @@ Operate a MOS switcher addon.
 
 `mos_switch` selects the bank to use, and `mos_program` programs a
 bank.
+
+# bbccat
+
+Print an Acorn-style text file (with CR or LF CR line endings) to
+stdout.
