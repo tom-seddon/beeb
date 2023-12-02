@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import os,sys,argparse
 
 ##########################################################################
@@ -7,7 +7,7 @@ import os,sys,argparse
 def main(options):
     for file_name in options.file_names:
         with open(file_name,'rt') as f: data=f.read()
-        data=data.replace('\n','\r')
+        data=data.replace('\n','\r').encode('latin_1')
         with open(file_name,'wb') as f: f.write(data)
 
 ##########################################################################
