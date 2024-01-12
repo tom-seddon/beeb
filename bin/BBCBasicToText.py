@@ -273,6 +273,11 @@ def Detokenise(line,add_labels,program,options):
             else: line_text+=chr(line[i])
             i+=1
 
+    if options.remove_leading_spaces:
+        i=0
+        while i<len(line_text) and line_text[i].isspace(): i+=1
+        line_text=line_text[i:]
+
     return line_text
             
 ##########################################################################
@@ -378,6 +383,10 @@ def main(argv):
                       default=True,
                       dest='line_numbers',
                       help="print @ labels, not line numbers (hack for diffs)")
+    parser.add_option('-l',
+                      '--remove-leading-spaces',
+                      action='store_true',
+                      help='''remove leading spaces from start of each line''')
                       
     options,args=parser.parse_args(argv)
 
