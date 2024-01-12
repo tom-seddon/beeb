@@ -213,3 +213,53 @@ bank.
 
 Print an Acorn-style text file (with CR or LF CR line endings) to
 stdout.
+
+# tube_relocation
+
+Manage
+[MOS 3.50 Tube language ROM relocation data](https://github.com/bitshifters/bbc-documents/blob/b831539a1fdda44f8e43be03185f8390c035389b/Master128/MOS350.txt#L731).
+
+The following sub-commands are available. The `-o` options are
+optional; if not specified, the data will be processed (including
+consistency checks and so on) but no files will be saved.
+
+## `tube_relocation info ROM`
+
+Print relevant info about sideways ROM `ROM`, including any Tube
+relocation-related info.
+
+`Tube relocation bitmap bank` will be shown as `+N` if the bank is
+relative.
+
+## `tube_relocation extract [-o BITMAP] ROM BITMAP-ROM`
+
+Extract the Tube relocation bitmap for a sideways ROM, saving it to
+`BITMAP`. `ROM` is the relocatable language ROM, and `BITMAP-ROM` is
+the data for the ROM that contains its bitmap (which can be the same
+file).
+
+## `tube_relocation set [-o OUTPUT-ROM OUTPUT-BITMAP-ROM] ROM BITMAP BANK`
+
+Set up Tube relocation data for a ROM.
+
+`ROM` is the relocatable ROM. It must have the relocatable bit set in
+the header, a Tube relocation address, and a relocatable descriptor
+(which will be overwritten).
+
+`BITMAP` is the Tube relocation bitmap, as produced by, e.g.,
+`tube_relocation extract`.
+
+`BANK` is the bank that the Tube relocation bitmap will be stored in,
+relative to whichever bank the language ROM will go in.
+
+There are two output files: `OUTPUT-ROM` is the file to save the
+modified ROM to, and `OUTPUT-BITMAP-ROM` is the file to append the
+bitmap data to.
+
+The previous length of `OUTPUT-BITMAP-ROM` (or 0 if it doesn't exist)
+is used to calculate the address for the bitmap data.
+
+## `tube_relocation unset [-o OUTPUT-ROM] ROM`
+
+Unset the Tube relocation bit in the header of `ROM`. Save the output
+to `OUTPUT-ROM`.
