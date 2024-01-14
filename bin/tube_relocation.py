@@ -84,7 +84,7 @@ def print_rom(rom,f):
 ##########################################################################
 
 def load_rom(path):
-    def bad(x): fatal('%s: %s'%(path,x))
+    def bad(x): fatal('%s : %s'%(path,x))
     def unterminated(i,what):
         if i>=len(data): bad('unterminated %s'%what)
 
@@ -148,6 +148,9 @@ def load_rom(path):
             bitmap_bank_absolute=(bitmap_bank&0x80)==0
             bitmap_bank&=0xf
 
+        if (tube_address&0xff)!=0:
+            bad('Tube address not page-aligned: 0x%x'%tube_address)
+            
     rom=ROM(type=data[6],
             version_byte=data[8],
             title=title,
@@ -158,12 +161,32 @@ def load_rom(path):
             bitmap_bank=bitmap_bank,
             bitmap_bank_absolute=bitmap_bank_absolute,
             bitmap_end_address=bitmap_end_address,
-            data=list(data))
+            data=bytearray(data))
 
     if g_verbose: print_rom(rom,sys.stdout)
 
     return rom
+
+##########################################################################
+##########################################################################
+
+def load_bitmap(path):
+    bitmap=load(path)
     
+    if len(bitmap)<4:
+        fatal('%s : bitmap file too small: %d bytes'%(options.bitmap_path,len(bitmap)))
+    elif len(bitmap)>16384:
+        fatal('%s : bitmap file too large: %d bytes'%(options.bitmap_path,len(bitmap)))
+
+    if not (bitmap[-2]==0xc0 and bitmap[-1]==0xde):
+        fatal('%s : bitmap missing 0xC0DE trailer'%path)
+
+    bitmap_size=bitmap[-3]*256+bitmap[-4]
+    if len(bitmap)!=bitmap_size+4:
+        fatal('%s : bitmap file is wrong size. Expected: %d (0x%x)'%(path,bitmap_size+4,bitmap_size+4))
+
+    return bitmap
+
 ##########################################################################
 ##########################################################################
 
@@ -184,8 +207,8 @@ def info_cmd(options):
 ##########################################################################
 
 def extract_cmd(options):
-    def bad_rom(x): fatal('%s: %s'%(options.language_rom_path,x))
-    def bad_bitmap(x): fatal('%s: %s'%(options.bitmap_rom_path,x))
+    def bad_rom(x): fatal('%s : %s'%(options.language_rom_path,x))
+    def bad_bitmap(x): fatal('%s : %s'%(options.bitmap_rom_path,x))
     
     rom=load_rom(options.language_rom_path)
     bitmap_rom=load(options.bitmap_rom_path)
@@ -210,25 +233,60 @@ def extract_cmd(options):
     pv('(Expected bitmap size: %d bytes)\n'%expected_bitmap_size)
 
     bitmap=bitmap_rom[i-4-expected_bitmap_size:i]
-    save(options.output_path,bytes(bitmap))
+    save(options.output_path,bitmap)
+
+##########################################################################
+##########################################################################
+
+def relocate_cmd(options):
+    rom=load_rom(options.rom_path)
+
+    if (rom.tube_address is None or
+        rom.descriptor_address is None):
+        fatal('%s : must be relocatable ROM'%(options.rom_path))
+    
+    bitmap=load_bitmap(options.bitmap_path)
+
+    delta=(rom.tube_address>>8)-0x80
+
+    mask=128
+    index=len(bitmap)-5
+    relocated=[]
+    for i,x in enumerate(rom.data):
+        if x>=0x7f and x<0xc0:
+            #pv('+0x%04x: 0x%x: bitmap[%d]=0x%02x, mask=0x%02x: relocate=%s\n'%(i,x,index,bitmap[index],mask,(bitmap[index]&mask!=0)))
+            if bitmap[index]&mask: x+=delta
+            mask>>=1
+            if mask==0:
+                mask=128
+                index-=1
+            
+        relocated.append(x)
+
+    save(options.output_path,bytes(relocated))
 
 ##########################################################################
 ##########################################################################
 
 def set_cmd(options):
+    if (options.bitmap_offset is not None and
+        options.bitmap_addr is not None):
+        fatal('only one of bitmap offset or bitmap address may be specified')
+
     rom=load_rom(options.rom_path)
 
     if rom.tube_address is None:
-        fatal('%s: must have a Tube relocation address'%options.rom_path)
+        fatal('%s : must have a Tube relocation address'%options.rom_path)
 
     if rom.descriptor_address is None:
-        fatal('%s: must have a Tube relocation descriptor'%options.descriptor_address)
+        fatal('%s : must have a Tube relocation descriptor'%options.descriptor_address)
     
-    bitmap=load(options.bitmap_path)
-    if not (bitmap[-1]==0xde and bitmap[-2]==0xc0):
-        fatal('%s: not a Tube relocation bitmap'%options.bitmap_path)
+    bitmap=load_bitmap(options.bitmap_path)
 
-    if not (options.bank>=0 and options.bank<16):
+    if ((options.absolute_bank and not (options.bank>=0 and
+                                        options.bank<16)) or
+        (not options.absolute_bank and not (options.bank>=-15 and
+                                            options.bank<=15))):
         fatal('invalid bank: %d'%(options.bank))
 
     if options.output is None:
@@ -240,28 +298,91 @@ def set_cmd(options):
             output_bitmap_data=load(output_bitmap_path)
         else: output_bitmap_data=b''
 
-    output_bitmap_data+=bitmap
-    if len(output_bitmap_data)>16384:
-        fatal('%s: would end up too large: %d bytes'%
-              ('(output data)' if output_bitmap_path is None else output_bitmap_path),
-              len(output_bitmap_data))
+    if options.bitmap_offset is not None:
+        if options.bitmap_offset<0:
+            fatal('invalid bitmap offset: %d'%options.bitmap_offset)
+        bitmap_offset=options.bitmap_offset
+    elif options.bitmap_address is not None:
+        if options.bitmap_address<0x8000:
+            fatal('invalid bitmap address 0x%04x'%options.bitmap_address)
+        bitmap_offset=options.bitmap_address-0x8000
+    else:
+        bitmap_offset=len(output_bitmap_data)
 
+    # Always account for an extra byte; the relocation data could be
+    # in theory up to 3 bits larger (in practice: up to 2 bits) due to
+    # the change in descriptor contents.
+    bitmap_end_offset=bitmap_offset+1+len(bitmap)
+    if bitmap_end_offset>16384:
+        name=('(output data)' if output_bitmap_path is None else output_bitmap_path)
+        fatal('%s : would end up too large: %d bytes'%(name,
+                                                       bitmap_end_offset))
+
+    # Extend bitmap data if necessary.
+    if bitmap_end_offset>len(output_bitmap_data):
+        output_bitmap_data+=b'\x00'*(bitmap_end_offset-len(output_bitmap_data))
+
+    # bytes is a very annoying type, if you're trying to modify the
+    # data.
+    output_bitmap_data=bytearray(output_bitmap_data)
+
+    # Record relocate flags. 1 entry per language ROM byte:
+    # True/False, indicating whether this byte needs relocating.
+    # Ignored for non-relocatable bytes.
+    relocate=[False]*len(rom.data)
+    mask=128
+    index=len(bitmap)-5
+    for i,x in enumerate(rom.data):
+        if x>=0x7f and x<0xc0:
+            relocate[i]=(bitmap[index]&mask)!=0
+            mask>>=1
+            if mask==0:
+                mask=128
+                index-=1
+
+    # Adjust relocation bitmap address.
+    bitmap_end_address=0x8000+bitmap_end_offset
     i=rom.descriptor_address-0x8000
-    bitmap_end_address=0x8000+len(output_bitmap_data)
-    rom.data[i]=bitmap_end_address&0xff
+
+    rom.data[i+0]=bitmap_end_address&0xff
     rom.data[i+1]=bitmap_end_address>>8
-    
-    rom.data[i+2]=(options.bank if options.absolute_bank else options.bank|0x80)
+    rom.data[i+2]=options.bank&15
+    if not options.absolute_bank: rom.data[i+2]|=0x80
+
+    relocate[i+0]=False
+    relocate[i+1]=False
+    relocate[i+2]=False
+
+    # Rebuild relocation table
+    output_index=bitmap_end_offset
+    output_bitmap_data[output_index-1]=0xde
+    output_bitmap_data[output_index-2]=0xc0
+    output_index-=5
+    output_mask=128
+    for i,x in enumerate(rom.data):
+        if x>=0x7f and x<0xc0:
+            if relocate[i]: output_bitmap_data[output_index]|=output_mask
+            else: output_bitmap_data[output_index]&=~output_mask
+            output_mask>>=1
+            if output_mask==0:
+                output_mask=128
+                output_index-=1
+        else: assert not relocate[i]
+
+    assert output_index>=bitmap_offset
+    bitmap_size=(bitmap_end_offset-output_index)-4
+    output_bitmap_data[bitmap_end_offset-3]=bitmap_size>>8
+    output_bitmap_data[bitmap_end_offset-4]=bitmap_size&0xff
 
     if options.output is not None:
-        save(options.output[0],bytes(rom.data))
+        save(options.output[0],rom.data)
         save(options.output[1],output_bitmap_data)
 
 ##########################################################################
 ##########################################################################
 
 def unset_cmd(options):
-    def bad(x): fatal('%s: %s'%(options.path,x))
+    def bad(x): fatal('%s : %s'%(options.path,x))
 
     rom=load_rom(options.path)
     if rom.tube_address is None: bad('must have a Tube relocation address')
@@ -271,7 +392,7 @@ def unset_cmd(options):
 
     rom.data[6]&=~0x20
 
-    save(options.output_path,bytes(rom.data))
+    save(options.output_path,rom.data)
 
 ##########################################################################
 ##########################################################################
@@ -295,9 +416,17 @@ def main(argv):
     extract_parser.add_argument('bitmap_rom_path',metavar='BITMAP-ROM',help='''read Tube relocation bitmap from ROM bank data %(metavar)s''')
     extract_parser.set_defaults(fun=extract_cmd)
 
+    relocate_parser=subparsers.add_parser('relocate',help='''relocate ROM (result may be invalid)''')
+    relocate_parser.add_argument('-o','--output',dest='output_path',metavar='ILE',help='''write relocated ROM to %(metavar)s''')
+    relocate_parser.add_argument('rom_path',metavar='ROM',help='''read ROM from %(metavar)s''')
+    relocate_parser.add_argument('bitmap_path',metavar='BITMAP',help='''read bitmap from %(metavar)s''')
+    relocate_parser.set_defaults(fun=relocate_cmd)
+
     set_parser=subparsers.add_parser('set',help='''set Tube relocation bitmap for a ROM''')
-    set_parser.add_argument('-o','--output',nargs=2,metavar=('OUTPUT-ROM','OUTPUT-BITMAP-ROM'),help='''write updated ROM to OUTPUT-ROM; append bitmap to OUTPUT-BITMAP-ROM''')
-    set_parser.add_argument('-a','--absolute-bank',action='store_true',help='''indicate BANK is absolute rather than relative''')
+    set_parser.add_argument('-o','--output',nargs=2,metavar=('OUTPUT-ROM','OUTPUT-BITMAP-ROM'),help='''write updated ROM to OUTPUT-ROM; write/append bitmap to OUTPUT-BITMAP-ROM''')
+    set_parser.add_argument('--absolute-bank',action='store_true',help='''indicate BANK is absolute rather than relative''')
+    set_parser.add_argument('--bitmap-address',metavar='ADDR',default=None,type=auto_int,help='''insert bitmap so it will start at address %(metavar)s. WARNING: will add or overwrite bitmap ROM data as required''')
+    set_parser.add_argument('--bitmap-offset',metavar='OFFSET',default=None,type=auto_int,help='''insert bitmap so it will start at offset %(metavar)s in bitmap ROM. WARNING: will add or overwrite bitmap ROM data as required''')
     set_parser.add_argument('rom_path',metavar='ROM',help='''read ROM from %(metavar)s''')
     set_parser.add_argument('bitmap_path',metavar='BITMAP',help='''load Tube relocation bitmap from %(metavar)s''')
     set_parser.add_argument('bank',metavar='BANK',type=auto_int,help='''specify Tube relocation bitmap bank''')

@@ -238,9 +238,19 @@ Extract the Tube relocation bitmap for a sideways ROM, saving it to
 the data for the ROM that contains its bitmap (which can be the same
 file).
 
+## `tube_relocate relocate [-o ROM] ROM BITMAP`
+
+Relocate `ROM` to its Tube address, given the relocation bitmap
+`BITMAP`. The output is intended to be identical to the ROM image that
+ends up copied to the 2nd processor.
+
+(This is provided for debugging purposes only. The relocated ROM may
+not be usable.)
+
 ## `tube_relocation set [-o OUTPUT-ROM OUTPUT-BITMAP-ROM] ROM BITMAP BANK`
 
-Set up Tube relocation data for a ROM.
+Set up Tube relocation data for a ROM, with the bitmap data held in a
+2nd ROM.
 
 `ROM` is the relocatable ROM. It must have the relocatable bit set in
 the header, a Tube relocation address, and a relocatable descriptor
@@ -254,10 +264,34 @@ relative to whichever bank the language ROM will go in.
 
 There are two output files: `OUTPUT-ROM` is the file to save the
 modified ROM to, and `OUTPUT-BITMAP-ROM` is the file to append the
-bitmap data to.
+bitmap data to. (These must be different files. It isn't currently
+possible to add the bitmap to the relocatable ROM itself.)
 
 The previous length of `OUTPUT-BITMAP-ROM` (or 0 if it doesn't exist)
 is used to calculate the address for the bitmap data.
+
+Note that the relocation bitmap will occupy 1 more byte in
+`OUTPUT-BITMAP-ROM` than it does on disk. (The extra byte is booked in
+case the bitmap needs to become larger to accommodate the changes to
+the descriptor. This is often unnecessary, but `tube_relocation` does
+not currently sweat the waste.)
+
+### Inserting bitmap data into a ROM
+
+The default assumption is that the bitmap ROM has spare space at the
+end, and the bitmap can be appended. If it's actually got spare space
+in the middle, or you just generally want the bitmap somewhere in
+particular, use `--bitmap-address ADDR` (address in sideways ROM
+area - i.e., 0x8000 to 0xbfff) or `--bitmap-offset OFFSET` (offset in
+file - i.e., 0 to 16383) to specify where the bitmap should start.
+
+The file will be extended, or existing bytes overwritten, as
+necessary. There are no checks other than basic bounds checks.
+
+Note that the relocation bitmap will occupy 1 more byte in
+`OUTPUT-BITMAP-ROM` than it does on disk (see above) - this must be
+borne in mind if trying to insert multiple relocation tables into a
+ROM.
 
 ## `tube_relocation unset [-o OUTPUT-ROM] ROM`
 
