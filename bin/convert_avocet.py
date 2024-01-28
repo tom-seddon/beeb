@@ -158,6 +158,12 @@ def fix_up_mnemonics(lines,options):
     if options.cmos:
         mnemonics=mnemonics.union(set(['PLX','PLY','PHX','PHY','STZ','TSB','TRB','BRA']))
 
+    indexing_suffixes=[
+        ',X',
+        ',Y',
+        ',X)'
+    ]
+
     def get_fixed_up_part(part):
         if part in mnemonics: return part.lower()
         elif part=='.ds': return '.fill'
@@ -177,10 +183,17 @@ def fix_up_mnemonics(lines,options):
             # binary - 1b etc.
             part=re.sub('^([01]+)b','%\\1',part)
             part=re.sub('([^A-Za-z0-9_])([01]+)b','\\1%\\2',part)
-            
-            if part.endswith(',X') or part.endswith(',Y'):
-                return part[:-2]+part[-2:].lower()
-            else: return part
+
+            for suffix in indexing_suffixes:
+                if part.endswith(suffix):
+                    return part[:-len(suffix)]+part[-len(suffix):].lower()
+
+            return part
+            # if part.endswith(',X') or part.endswith(',Y'):
+            #     return part[:-2]+part[-2:].lower()
+            # elif parts.endswith(',X)'):
+            #     return part[:-3]+part[-3:].lower()
+            # else: return part
 
     for line in lines:
         for i in range(len(line.parts)):
@@ -452,15 +465,15 @@ def fix_up_comments_2(lines,options):
             if j<0:
                 fatal('%s:%d: couldn\'t find label for function: %s'%(options.input_path,1+i,label))
 
-            if options.no_blocks:
-                # leave everything in place, including the comments -
-                # might want to add .endblock in manually
-                pass
-            else:
+            if options.blocks:
                 lines[j].parts.append('.block')
                 lines[i].indented=True
                 lines[i].parts.append('.endblock')
                 lines[i].comment=None
+            else:
+                # leave everything in place, including the comments -
+                # might want to add .endblock in manually
+                pass
                 
         i+=1
 
@@ -525,7 +538,7 @@ def auto_int(x): return int(x,0)
 def main(argv):
     parser=argparse.ArgumentParser()
 
-    parser.add_argument('--no-blocks',action='store_true',help='''don't emit .block/.endblock directives''')
+    parser.add_argument('--blocks',action='store_true',help='''emit .block/.endblock directives''')
     parser.add_argument('--65c02',dest='cmos',action='store_true',help='''support 65c02 mnemonics''')
     parser.add_argument('-o','--output',dest='output_path',metavar='FILE',help='''write output to %(metavar)s''')
     parser.add_argument('input_path',metavar='FILE',help='''read .lst input from %(metavar)s''')
