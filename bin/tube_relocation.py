@@ -279,7 +279,7 @@ def set_cmd(options):
         fatal('%s : must have a Tube relocation address'%options.rom_path)
 
     if rom.descriptor_address is None:
-        fatal('%s : must have a Tube relocation descriptor'%options.descriptor_address)
+        fatal('%s : must have a Tube relocation descriptor'%options.rom-path)
     
     bitmap=load_bitmap(options.bitmap_path)
 
@@ -397,6 +397,50 @@ def unset_cmd(options):
 ##########################################################################
 ##########################################################################
 
+def create_cmd(options):
+    rom=load_rom(options.rom_path)
+    if rom.descriptor_address is None:
+        # Ensure the output of this is something that the set command
+        # can consume. Though in principle you could sort this stuff
+        # out yourself, so maybe this check should be optional?
+        fatal('%s : must have a Tube relocation address and descriptor'%options.rom_path)
+
+    rom2=load_rom(options.other_rom_path)
+
+    if len(rom.data)!=len(rom2.data): fatal('ROMs are not the same length')
+
+    # Build the bitmap
+    num_diffs=0
+    expected_delta=None
+    bitmap=[]
+    num_relocs=0
+    for i in range(len(rom.data)):
+        if rom.data[i]>=0x7f and rom.data[i]<=0xbf:
+            reloc=False
+            delta=rom2.data[i]-rom.data[i]
+            if delta!=0:
+                reloc=True
+                if expected_delta is None: expected_delta=delta
+                elif delta!=expected_delta:
+                    fatal('distance not constant at +%d (+0x%x) (expected %d; got %d)'%(i,i,expected_delta,delta))
+
+            index=num_relocs>>3
+            mask=1<<(7-(num_relocs&7))
+            if index==len(bitmap): bitmap.append(0)
+            if reloc: bitmap[index]|=mask
+            num_relocs+=1
+
+    bitmap.reverse()
+    bitmap+=[0xc0,0xde]
+
+    pv('%d bitmap bytes (%d relocatable bytes)\n'%(len(bitmap),num_relocs))
+
+    bitmap=bytes(bitmap)
+    if options.output_path is not None: save(options.output_path,bitmap)
+
+##########################################################################
+##########################################################################
+
 def auto_int(x): return int(x,0)
 
 def main(argv):
@@ -411,9 +455,9 @@ def main(argv):
     info_parser.set_defaults(fun=info_cmd)
 
     extract_parser=subparsers.add_parser('extract',help='''extract Tube relocation bitmap''')
-    extract_parser.add_argument('-o','--output',dest='output_path',metavar='BITMAP',help='''write Tube relocation bitmap to %(metavar)s''')
-    extract_parser.add_argument('language_rom_path',metavar='ROM',help='''read language ROM from %(metavar)s''')
-    extract_parser.add_argument('bitmap_rom_path',metavar='BITMAP-ROM',help='''read Tube relocation bitmap from ROM bank data %(metavar)s''')
+    extract_parser.add_argument('-o','--output',dest='output_path',metavar='OUTPUT-BITMAP',help='''write Tube relocation bitmap to %(metavar)s''')
+    extract_parser.add_argument('language_rom_path',metavar='INPUT-ROM',help='''read language ROM from %(metavar)s''')
+    extract_parser.add_argument('bitmap_rom_path',metavar='INPUT-BITMAP-ROM',help='''read Tube relocation bitmap from ROM bank data %(metavar)s''')
     extract_parser.set_defaults(fun=extract_cmd)
 
     relocate_parser=subparsers.add_parser('relocate',help='''relocate ROM (result may be invalid)''')
@@ -436,6 +480,12 @@ def main(argv):
     unset_parser.add_argument('-o','--output',dest='output_path',metavar='OUTPUT-ROM',help='''write updated ROM to %(metavar)s''')
     unset_parser.add_argument('path',metavar='ROM',help='''read ROM from %(metavar)s''')
     unset_parser.set_defaults(fun=unset_cmd)
+
+    create_parser=subparsers.add_parser('create',help='''create Tube relocation bitmap''')
+    create_parser.add_argument('-o','--output',dest='output_path',metavar='OUTPUT-BITMAP',help='''write bitmap data to %(metavar)s''')
+    create_parser.add_argument('rom_path',metavar='INPUT-ROM',help='''ROM assembled to run at $8000''')
+    create_parser.add_argument('other_rom_path',metavar='INPUT-ROM-2',help='''ROM assembled to run at some other address''')
+    create_parser.set_defaults(fun=create_cmd)
 
     options=parser.parse_args(argv)
     if options.fun is None:
