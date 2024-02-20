@@ -293,6 +293,48 @@ Note that the relocation bitmap will occupy 1 more byte in
 borne in mind if trying to insert multiple relocation tables into a
 ROM.
 
+## `tube_relocation create [-o OUTPUT-BITMAP] ROM ROM2`
+
+Create a Tube relocation bitmap from two ROMs:
+
+- `ROM`: language part assembled to run at its unrelocated address,
+  Tube relocation address set to the desired value, empty relocation
+  descriptor
+  
+- `ROM2`: language part assembled to run it some other address, Tube
+  relocation address set to the desired value, empty relocation
+  descriptor
+  
+The differences between the two ROMs will be used to generate a
+relocation bitmap, written to `OUTPUT-BITMAP`.
+
+## `tube_relocation set-multi [--set-multi] [--begin=ADDR] [--end=ADDR] [-b BITMAP-ROM BANK] [-r ROM BITMAP]` 
+
+Set up Tube relocation data for multiple ROMs, writing the bitmaps
+into a contiguous region in a bitmap ROM, checking for region
+overflow, and fixing up each ROM's descriptor as required.
+
+Unlike the other operations, this one operates in-place, to avoid
+making the command line even fiddlier than it is already. But, broadly
+in keeping with the other operations, no files are modified by
+default; supply `--set-multi` to tell it to actually do the thing.
+
+`--begin` and `--end` specify the region to store bitmaps in. The
+begin is inclusive, default 0x8000; the end is exclusive, default
+0xc000.
+
+`-b` specifies the ROM to store the bitmaps in, and the bank it will
+go in. No checking of the existing contents is performed! The
+specified region will be overwritten with the bitmap data, and you
+have to be sure that this won't be a problem.
+
+Each `-r ROM BITMAP` specifies a ROM image and its corresponding
+bitmap.
+
+(If `-b` is not specified, a default bank of 0 is used, and processing
+will continue as normal, so region exhaustion can be tested. You must
+specify `-b` if using `--set-multi` though.)
+
 ## `tube_relocation unset [-o OUTPUT-ROM] ROM`
 
 Unset the Tube relocation bit in the header of `ROM`. Save the output
