@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import os,os.path,sys,collections,argparse,glob,numbers,bbc_inf
 
 # see http://mdfs.net/Docs/Comp/Disk/Format/ADFS
@@ -50,11 +50,8 @@ def get_32le(data,offset):
 def bad_format(msg): fatal('bad ADFS format - %s'%msg)
 
 def check_hugo(data,offset,msg):
-    if (data[offset+0]!=ord('H') and
-        data[offset+1]!=ord('u') and
-        data[offset+2]!=ord('g') and
-        data[offset+3]!=ord('o')):
-        bad_format('Hugo missing: %s'%msg)
+    assert type(data)==bytes,type(data)
+    if data[offset+0:offset+4]!=b'Hugo': bad_format('Hugo missing: %s'%msg)
 
 def check_checksum(data,what):
     sum=255
@@ -66,6 +63,8 @@ def check_checksum(data,what):
 
 class ADFSImage:
     def __init__(self,data,sequential):
+        assert type(data)==bytes,type(data)
+        
         if len(data)%256!=0:
             bad_format('data size not a multiple of 256 bytes')
             
@@ -99,10 +98,10 @@ class ADFSImage:
                 # logical sector order is tracks 0-(N-1) on side 0,
                 # then again on side 2.
                 sector=i%format.num_sectors
-                i/=format.num_sectors
+                i//=format.num_sectors
                 
                 track=i%format.num_tracks
-                i/=format.num_tracks
+                i//=format.num_tracks
 
                 side=i
                 assert side>=0 and side<format.num_sides
@@ -126,7 +125,7 @@ def extract_dir(adf,
     pv('ADFS dir %s -> PC dir %s...\n'%('.'.join(adfs_path),
                                         output_path))
     
-    dir=[]
+    dir=bytes()
     for i in range(5): dir+=adf.get_sector(dir_sector+i)
 
     check_hugo(dir,1,'%s header'%adfs_path)
@@ -183,11 +182,10 @@ def extract_dir(adf,
                 "L" if L else "",
                 sector))
 
-            data=[]
+            data=bytes()
             while size>0:
                 next_sector=adf.get_sector(sector)
-                if len(next_sector)>size:
-                    next_sector=next_sector[:size]
+                if len(next_sector)>size: next_sector=next_sector[:size]
                     
                 data+=next_sector
                 sector+=1
@@ -197,10 +195,9 @@ def extract_dir(adf,
             if not os.path.isdir(pc_folder): os.makedirs(pc_folder)
             
             with open('%s.inf'%pc_path,'wt') as f:
-                print>>f,'%s %08x %08x %02x'%(name,load_addr,exec_addr,attr)
+                f.write('%s %08x %08x %02x\n'%(name,load_addr,exec_addr,attr))
 
-            with open(pc_path,'wb') as f:
-                f.write(''.join([chr(x) for x in data]))
+            with open(pc_path,'wb') as f: f.write(data)
 
             
 ##########################################################################
@@ -213,8 +210,7 @@ def adf_extract(options):
     input_basename=os.path.splitext(os.path.basename(options.input_path))[0]
 
     with open(options.input_path,'rb') as f:
-        adf=ADFSImage([ord(x) for x in f.read()],
-                      options.sequential)
+        adf=ADFSImage(f.read(),options.sequential)
 
     extract_dir(adf,
                 ['$'],

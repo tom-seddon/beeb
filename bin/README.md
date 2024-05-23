@@ -145,7 +145,7 @@ required.
 
 Specify file order in the same way as `ssd_create.py`.
 
-# adf_extract (Python 2.7)
+# adf_extract
 
 Extract an ADFS disk image to .inf files.
 
