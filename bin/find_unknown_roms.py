@@ -190,7 +190,7 @@ def main(argv):
     parser=argparse.ArgumentParser()
 
     parser.add_argument('-v','--verbose',action='store_true',help='''be more verbose''')
-    parser.add_argument('library_json_path',metavar='JSON-PATH',default=r'''./metadata.json''',help='''read library JSON from %(metavar)s. Default: %(default)s''')
+    parser.add_argument('library_json_path',metavar='JSON-PATH',help='''read library JSON from %(metavar)s. Default: %(default)s''')
     parser.add_argument('rom_paths',metavar='ROM-PATH',nargs='*',help='''look for BBC Micro ROMs in %(metavar)s''')
 
     main2(parser.parse_args(argv[1:]))
