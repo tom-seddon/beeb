@@ -57,11 +57,27 @@ names conform to a pattern. There's no standard pattern, though, so
 you may have to just list them out in the `.gitattributes` file in
 each folder. Either way, it's worth the effort!
 
-# dump_bbc_rom_info (Python 2.7)
+# dump_bbc_rom_info
 
 Simple tool that scans sideways ROM headers and prints info to stdout.
 I used this to have a quick look at [Wouter Scholten's monster ROM
 archive](http://wouter.bbcmicro.net/bbc/bbc-software.html).
+
+# find_unknown_roms
+
+Search paths for ROMs not present in TobyLobster's BBC Micro ROM
+Library: https://tobylobster.github.io/rom_library/ (stardot thread:
+https://www.stardot.org.uk/forums/viewtopic.php?t=29831)
+
+To use, download metadata.json from the library, then run the command,
+supplying paths of folders to search in, and the path to metadata.json
+if not in the working folder (run with `-h` to verify exact syntax).
+ROM files will be found, cross-referenced against the library, and
+paths to any unknown ones printed along with the ROM title.
+
+The script will attempt to concatenate 16 KB ROMs that look like they
+might be a larger ROM that was dumped in parts, in the hope this will
+find a match.
 
 # ssd_create
 
