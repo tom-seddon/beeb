@@ -106,7 +106,10 @@ def main2(options):
         for folder_path,folder_names,file_names in os.walk(rom_path):
             for file_name in file_names:
                 rom_path=os.path.join(folder_path,file_name)
-                with open(rom_path,'rb') as f: data=load_rom(f)
+                try:
+                    data=None
+                    with open(rom_path,'rb') as f: data=load_rom(f)
+                except PermissionError as e: sys.stderr.write('WARNING: %s\n'%e)
                 if data is None: continue
 
                 num_roms_found+=1
