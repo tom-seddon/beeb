@@ -135,7 +135,7 @@ Along the lines of [`dos2unix`](https://linux.die.net/man/1/dos2unix),
 convert files between modern standard line endings (lines ending with
 LF, or, on Windows, CR+LF) and BBC-style ones (lines ending with CR).
 
-# adf_create (Python 2.7)
+# adf_create
 
 Create an ADFS disk image from a set of DFS-style .inf files.
 

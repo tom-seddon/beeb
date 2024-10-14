@@ -1,5 +1,5 @@
-#!/usr/bin/python
-import os,os.path,sys,collections,argparse,glob,numbers
+#!/usr/bin/python3
+import os,os.path,sys,collections,argparse,glob,numbers,functools
 
 # see http://mdfs.net/Docs/Comp/Disk/Format/ADFS
 
@@ -143,15 +143,15 @@ def get_file_address(addr_str):
 
 def create_beeb_file(fname,inf_data):
     if len(inf_data[0])<3:
-        print>>sys.stderr,'NOTE: Ignoring %s: BBC name too short: %s'%(fname,inf_data[0])
+        sys.stderr.write('NOTE: Ignoring %s: BBC name too short: %s\n'%(fname,inf_data[0]))
         return None
         
     if inf_data[0][1]!='.':
-        print>>sys.stderr,'NOTE: Ignoring %s: BBC name not a DFS-style name: %s'%(fname,inf_data[0])
+        sys.stderr.write('NOTE: Ignoring %s: BBC name not a DFS-style name: %s\n'%(fname,inf_data[0]))
         return None
         
     if len(inf_data[0])>12:
-        print>>sys.stderr,'NOTE: Ignoring %s: BBC name too long: %s'%(fname,inf_data[0])
+        sys.stderr.write('NOTE: Ignoring %s: BBC name too long: %s\n'%(fname,inf_data[0]))
         return None
 
     locked=False
@@ -243,7 +243,7 @@ class ADFSImageBuilder:
         self._sectors=[]
 
         # book 2 sectors for the free space map - filled in later.
-        for i in range(2): self._add_sector(256*[0])
+        for i in range(2): self._add_sector(bytearray(256))
 
         # build the sectors.
         self._append_dir(root_dir,len(self._sectors))
@@ -255,7 +255,7 @@ class ADFSImageBuilder:
 
         # expand disk image to the full size.
         while len(self._sectors)<self._max_num_sectors:
-            self._add_sector(256*[0])
+            self._add_sector(bytearray(256))
 
         self._check()
 
@@ -337,7 +337,7 @@ class ADFSImageBuilder:
         
         file_sector_idx=len(self._sectors)
         
-        data=[ord(x) for x in f.data]
+        data=bytearray(f.data)
         while len(data)%256!=0: data.append(0)
         for i in range(0,len(data),256): self._add_sector(data[i:i+256])
         
@@ -352,7 +352,7 @@ class ADFSImageBuilder:
 
         entries=[]
         for item in dir.get_items():
-            entry=CatalogueEntry(item,0x1a*[0])
+            entry=CatalogueEntry(item,bytearray(0x1a))
             entries.append(entry)
 
             for i in range(len(entry.item.name)):
@@ -377,17 +377,17 @@ class ADFSImageBuilder:
 
             # presumably sequence number can be left at zero?
 
-        entries.sort(lambda a,b:cmp(a.item.name.upper(),
-                                    b.item.name.upper()))
+        def cmp_items(a,b):
+            aname=a.item.name.upper()
+            bname=b.item.name.upper()
+            if aname<bname: return -1
+            elif aname>bname: return 1
+            else: return 0
+
+        entries.sort(key=functools.cmp_to_key(cmp_items))
 
         # fill out catalogue as flat array of 5 sectors of data.
-        data=[
-            0,
-            ord('H'),
-            ord('u'),
-            ord('g'),
-            ord('o'),
-        ]
+        data=bytearray(b'\x00Hugo')
         
         for entry in entries: data+=entry.data
 
@@ -424,7 +424,7 @@ g_adfs_formats={
 def get_formats_text():
     formats=[]
 
-    for k,v in g_adfs_formats.iteritems():
+    for k,v in g_adfs_formats.items():
         formats.append('%s (%dx%dx%d)'%(k,
                                         v.num_sides,
                                         v.num_tracks,
@@ -499,7 +499,7 @@ def main(options):
 
     if options.output_path is not None:
         # Create output file data.
-        data=[]
+        data=b''
         for track in range(format.num_tracks):
             for side in range(format.num_sides):
                 for sector in range(format.num_sectors):
@@ -507,7 +507,6 @@ def main(options):
                                               format.num_sectors)+
                                         track*format.num_sectors+
                                         sector]
-        data=''.join([chr(x) for x in data])
         with open(options.output_path,'wb') as f: f.write(data)
 
 ##########################################################################
