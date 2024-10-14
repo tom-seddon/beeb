@@ -195,19 +195,22 @@ def find_beeb_files(options):
     fnames=[]
     for pattern in options.fnames: fnames+=glob.glob(pattern)
 
-    # Remove anything that doesn't have a .inf file.
-    fnames=[x for x in fnames if os.path.isfile(x+'.inf')]
+    # # Remove anything that doesn't have a .inf file.
+    # fnames=[x for x in fnames if os.path.isfile(x+'.inf')]
 
     fnames=get_unique_paths(fnames)
 
     beeb_files=[]
     for fname in fnames:
-        with open(fname+'.inf','rt') as f:
-            inf_lines=f.readlines()
-            if len(inf_lines)==0:
-                # Unclever bodge.
-                inf_data=[os.path.basename(fname),'ffffffff','ffffffff']
-            else: inf_data=inf_lines[0].split()
+        inf_path=fname+'.inf'
+        if not os.path.isfile(inf_path): inf_lines=[]
+        else: 
+            with open(fname+'.inf','rt') as f: inf_lines=f.readlines()
+            
+        if len(inf_lines)==0:
+            # Unclever bodge.
+            inf_data=[os.path.basename(fname),'ffffffff','ffffffff']
+        else: inf_data=inf_lines[0].split()
 
         beeb_file=create_beeb_file(fname,inf_data)
         if beeb_file is not None: beeb_files.append(beeb_file)
