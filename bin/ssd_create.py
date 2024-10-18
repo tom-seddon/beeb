@@ -59,9 +59,17 @@ def get_files(options):
 
     # Use glob.glob on the input file names, since Windows-style
     # shells don't do that for you.
+    any_non_matching=False
     for pattern in options.fnames:
-        for path in glob.glob(pattern):
-            files.append(File(pc_path=path,beeb_name=None))
+        paths=glob.glob(pattern)
+        if len(paths)==0:
+            any_non_matching=True
+            sys.stderr.write('WARNING: not found: %s\n'%pattern)
+        else:
+            for path in paths:files.append(File(pc_path=path,beeb_name=None))
+
+    if any_non_matching:
+        if options.must_exist: fatal('provided names didn\'t all match')
 
     return files
 
@@ -351,12 +359,16 @@ def main(args):
                         default=[],
                         help='add line to $.!BOOT, overriding any $.!BOOT specified and placing file first on disk. Implies --opt4=3')
 
+    parser.add_argument('--must-exist',
+                        action='store_true',
+                        help='''fail if any provided file doesn't exist/pattern matches no files''')
+
     parser.add_argument("fnames",
                         nargs="*",
                         metavar="FILE",
                         #action="append",
                         default=[],
-                        help="file(s) to put in disc image (non-BBC files will be ignored)")
+                        help="file(s) to put in disc image (non-BBC files will be ignored). %(metavar)s can be a Unix-style glob pattern")
     
     options=parser.parse_args(args)
     ssd_create(options)
