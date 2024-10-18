@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-import os,os.path,sys,collections,argparse,glob,numbers,functools
+import os,os.path,sys,collections,argparse,glob,numbers,functools,fnmatch
 
 # see http://mdfs.net/Docs/Comp/Disk/Format/ADFS
 
@@ -195,8 +195,11 @@ def find_beeb_files(options):
     fnames=[]
     for pattern in options.fnames: fnames+=glob.glob(pattern)
 
-    # # Remove anything that doesn't have a .inf file.
-    # fnames=[x for x in fnames if os.path.isfile(x+'.inf')]
+    # Remove anything with a .inf extension.
+    #
+    # Should really be a bit cleverer than this, but this will catch
+    # approx 100% of cases.
+    fnames=[fname for fname in fnames if not fnmatch.fnmatch(fname,'*.inf')]
 
     fnames=get_unique_paths(fnames)
 
