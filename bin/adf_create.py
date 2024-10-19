@@ -141,7 +141,7 @@ def get_file_address(addr_str):
 
     return addr
 
-def create_beeb_file(fname,inf_data):
+def create_beeb_file(fname,inf_data,options):
     if len(inf_data[0])<3:
         sys.stderr.write('NOTE: Ignoring %s: BBC name too short: %s\n'%(fname,inf_data[0]))
         return None
@@ -154,14 +154,16 @@ def create_beeb_file(fname,inf_data):
         sys.stderr.write('NOTE: Ignoring %s: BBC name too long: %s\n'%(fname,inf_data[0]))
         return None
 
-    locked=False
-    if len(inf_data)>=4:
-        if inf_data[3].lower()=='l': locked=True
-        else:
-            try:
-                attr=int(inf_data[3],16)
-                locked=(attr&8)!=0
-            except ValueError: pass
+    if options.all_non_writeable: locked=True
+    else:
+        locked=False
+        if len(inf_data)>=4:
+            if inf_data[3].lower()=='l': locked=True
+            else:
+                try:
+                    attr=int(inf_data[3],16)
+                    locked=(attr&8)!=0
+                except ValueError: pass
 
     with open(fname,'rb') as f: data=f.read()
 
@@ -215,7 +217,7 @@ def find_beeb_files(options):
             inf_data=[os.path.basename(fname),'ffffffff','ffffffff']
         else: inf_data=inf_lines[0].split()
 
-        beeb_file=create_beeb_file(fname,inf_data)
+        beeb_file=create_beeb_file(fname,inf_data,options)
         if beeb_file is not None: beeb_files.append(beeb_file)
 
     return beeb_files
@@ -537,6 +539,8 @@ if __name__=='__main__':
     parser.add_argument('--type',metavar='TYPE',default='L',help='specify ADFS format - %(metavar)s can be one of: '+get_formats_text()+'. Default: %(default)s')
 
     parser.add_argument('--dir',metavar='PATH',default=None,help='if specified, read *OPT4 and title settings from BeebLink folder %(metavar)s (title will be silently truncated if too long)')
+
+    parser.add_argument('--all-non-writeable',action='store_true',help='''add all files as non-writeable''')
 
     parser.add_argument('fnames',nargs='*',metavar='FILE',default=[],help='file(s) to put in disk image (non-BBC files will be ignored)')
 

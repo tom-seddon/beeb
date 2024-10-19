@@ -26,20 +26,14 @@ def v(str):
 ##########################################################################
 
 def get_data(xs):
-    # This is super-dumb, but it works the same in both Python 2 and
-    # Python 3...
-    hex=''
+    data=bytearray()
     for x in xs:
-        if (type(x) is int or
-            (sys.version_info<(3,0) and type(x) is long)):
-            assert x>=0 and x<=255
-            hex+='%02x'%x
-        elif type(x) is str:
-            assert len(x)==1
-            hex+='%02x'%ord(x[0])
+        if isinstance(x,int): data.append(x)
+        elif isinstance(x,str):
+            assert len(x)==1,x
+            data.append(ord(x))
         else: assert False,(x,type(x))
-
-    return bytearray.fromhex(hex)
+    return data
 
 ##########################################################################
 ##########################################################################
@@ -76,7 +70,7 @@ def get_files(options):
 ##########################################################################
 ##########################################################################
 
-def get_beeb_files(files):
+def get_beeb_files(files,options):
     beeb_names_seen_lc=set()
     inf_paths_seen=set()
 
@@ -116,13 +110,15 @@ def get_beeb_files(files):
         exec_=int(inf_data[2],16)
 
         locked=False
-        if len(inf_data)>=4:
-            if inf_data[3].lower()=='l': locked=True
-            else:
-                try:
-                    attr=int(inf_data[3],16)
-                    locked=(attr&8)!=0
-                except ValueError: pass
+        if options.all_locked: locked=True
+        else:
+            if len(inf_data)>=4:
+                if inf_data[3].lower()=='l': locked=True
+                else:
+                    try:
+                        attr=int(inf_data[3],16)
+                        locked=(attr&8)!=0
+                    except ValueError: pass
 
         with open(file.pc_path,'rb') as f: data=f.read()
 
@@ -183,7 +179,7 @@ def ssd_create(options):
 
     files=get_files(options)
 
-    files=get_beeb_files(files)
+    files=get_beeb_files(files,options)
 
     # *TITLE setting.
     title=''
@@ -270,7 +266,8 @@ def ssd_create(options):
         offset=8+8*(len(files)-1-i)
 
         for j in range(len(file.name)): sectors[0][offset+j]=file.name[j]
-        sectors[0][offset+7]=file.dir
+        sectors[0][offset+7]=ord(file.dir)
+        if file.locked: sectors[0][offset+7]|=0x80
 
         sectors[1][offset+0]=(file.load>>0)&255
         sectors[1][offset+1]=(file.load>>8)&255
@@ -362,6 +359,10 @@ def main(args):
     parser.add_argument('--must-exist',
                         action='store_true',
                         help='''fail if any provided file doesn't exist/pattern matches no files''')
+
+    parser.add_argument('--all-locked',
+                        action='store_true',
+                        help='''make all files on disk image locked''')
 
     parser.add_argument("fnames",
                         nargs="*",
