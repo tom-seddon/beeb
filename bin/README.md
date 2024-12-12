@@ -163,7 +163,9 @@ Specify file order in the same way as `ssd_create.py`.
 
 # adf_extract
 
-Extract an ADFS disk image to .inf files.
+Extract an ADFS disk image to .inf files. The disk image is assumed to
+be a floppy disk image, but if it isn't, supply `--sequential` on the
+command line. 
 
 The directory structure of the ADFS disk will be reproduced. PC
 folders will be created corresponding to each ADFS directory, with

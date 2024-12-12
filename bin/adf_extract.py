@@ -6,11 +6,16 @@ import os,os.path,sys,collections,argparse,glob,numbers,bbc_inf
 ##########################################################################
 ##########################################################################
 
-def fatal(str):
-    sys.stderr.write('FATAL: %s'%str)
+def stderr(prefix,str):
+    sys.stderr.write('%s: %s'%(prefix,str))
     if str[-1]!='\n': sys.stderr.write('\n')
+
+def fatal(str):
+    stderr('FATAL',str)
     sys.exit(1)
 
+def warn(str): stderr('WARNING',str)
+    
 ##########################################################################
 ##########################################################################
 
@@ -47,7 +52,7 @@ def get_32le(data,offset):
             data[offset+2]<<16|
             data[offset+3]<<24)
 
-def bad_format(msg): fatal('bad ADFS format - %s'%msg)
+def bad_format(msg): fatal('bad ADFS format: %s'%msg)
 
 def check_hugo(data,offset,msg):
     assert type(data)==bytes,type(data)
@@ -62,8 +67,10 @@ def check_checksum(data,what):
         bad_format('bad checksum for %s - expected $%02x, got $%02x'%(what,sum&0xff,data[255]))
 
 class ADFSImage:
-    def __init__(self,data,sequential):
+    def __init__(self,data,sequential,ignore_size_mismatch):
         assert type(data)==bytes,type(data)
+        
+        self.ignore_size_mismatch=ignore_size_mismatch
         
         if len(data)%256!=0:
             bad_format('data size not a multiple of 256 bytes')
@@ -75,7 +82,10 @@ class ADFSImage:
         pv('%d sector(s) on disk\n'%num_sectors)
 
         if len(data)!=num_sectors*256:
-            bad_format('disk image size mismatch (data is %d sectors (%d bytes), image says %d sectors (%d bytes))'%(len(data)//256,len(data),num_sectors,num_sectors*256))
+            message='disk image size mismatch (data is %d sectors (%d bytes), image says %d sectors (%d bytes))'%(len(data)//256,len(data),num_sectors,num_sectors*256)
+            if self.ignore_size_mismatch:
+                warn('ignoring bad ADFS format: %s\n'%message)
+            else: bad_format(message)
 
         self._sectors=[]
         if sequential:
@@ -91,8 +101,8 @@ class ADFSImage:
                     format=f
                     break
 
-            if f is None:
-                bad_format('unrecognised disk size - %d sectors (%d bytes)'%(num_sectors,num_sectors*256))
+            if format is None:
+                bad_format('unrecognised floppy disk size: %d sectors (%d bytes) (maybe try --sequential)'%(num_sectors,num_sectors*256))
 
             for i in range(len(data)//256):
                 # logical sector order is tracks 0-(N-1) on side 0,
@@ -112,7 +122,9 @@ class ADFSImage:
                 self._sectors.append(data[offset:offset+256])
 
     def get_sector(self,sector):
-        assert sector>=0 and sector<len(self._sectors),(sector,len(self._sectors))
+        assert sector>=0,sector
+        assert self.ignore_size_mismatch or sector<len(self._sectors),(sector,len(self._sectors))
+        if sector>=len(self._sectors): return None
         return self._sectors[sector]
             
 ##########################################################################
@@ -168,8 +180,8 @@ def extract_dir(adf,
             pc_path=os.path.join(output_path,
                                  bbc_inf.get_pc_name(name))
 
-            pv('ADFS file %s -> PC file %s\n'%('.'.join(adfs_path+[name]),
-                                               pc_path))
+            adfs_path_str='.'.join(adfs_path+[name])
+            pv('ADFS file %s -> PC file %s\n'%(adfs_path_str,pc_path))
             
             pv('    (load=%08x exec=%08x size=%u attr=%02x (%s%s%s%s) sector=%06x)\n'%
                (load_addr,
@@ -182,22 +194,28 @@ def extract_dir(adf,
                 "L" if L else "",
                 sector))
 
-            data=bytes()
+            data=bytearray()
             while size>0:
                 next_sector=adf.get_sector(sector)
+                if next_sector is None:
+                    warn('file "%s" runs past end of image - not extracting'%adfs_path_str)
+                    data=None
+                    break
+                    
                 if len(next_sector)>size: next_sector=next_sector[:size]
                     
                 data+=next_sector
                 sector+=1
                 size-=256
 
-            pc_folder=os.path.dirname(pc_path)
-            if not os.path.isdir(pc_folder): os.makedirs(pc_folder)
-            
-            with open('%s.inf'%pc_path,'wt') as f:
-                f.write('%s %08x %08x %02x\n'%(name,load_addr,exec_addr,attr))
+            if data is not None:
+                pc_folder=os.path.dirname(pc_path)
+                if not os.path.isdir(pc_folder): os.makedirs(pc_folder)
 
-            with open(pc_path,'wb') as f: f.write(data)
+                with open('%s.inf'%pc_path,'wt') as f:
+                    f.write('%s %08x %08x %02x\n'%(name,load_addr,exec_addr,attr))
+
+                with open(pc_path,'wb') as f: f.write(data)
 
             
 ##########################################################################
@@ -210,7 +228,9 @@ def adf_extract(options):
     input_basename=os.path.splitext(os.path.basename(options.input_path))[0]
 
     with open(options.input_path,'rb') as f:
-        adf=ADFSImage(f.read(),options.sequential)
+        adf=ADFSImage(f.read(),
+                      options.sequential,
+                      options.ignore_size_mismatch)
 
     extract_dir(adf,
                 ['$'],
@@ -229,6 +249,8 @@ def main(args):
     parser.add_argument('-o','--output-dir',dest='output_path',default='.',metavar='DIR',help='write files to %(metavar)s. Default: %(default)s')
 
     parser.add_argument('--sequential',action='store_true',help='image is in logical sector order rather than track order')
+
+    parser.add_argument('--ignore-size-mismatch',action='store_true',help='''ignore mismatch between ADFS volume size and actual disk image size''')
 
     parser.add_argument('input_path',metavar='FILE',help='read disk image from %(metavar)s')
 
