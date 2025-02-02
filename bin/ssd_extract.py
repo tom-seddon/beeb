@@ -280,23 +280,32 @@ def main(options):
                 # Write PC copy.
                 if basic:
                     raw_path=os.path.join(dest_dir,
-                                          'raw/%d'%drive,
+                                          'basic/%d'%drive,
                                           pc_name)
-
-                    decoded=BBCBasicToText.DecodeLines(contents)
+                    
+                    class Options: pass
+                    bbtt_options=Options()
+                    bbtt_options.perfect=False
+                    bbtt_options.line_numbers=False
+                    bbtt_options.basicv=False
+                    bbtt_options.basic4=False
+                    bbtt_options.basic2=True
+                    bbtt_options.remove_leading_spaces=False
+                    bbtt_options.codes=False
+                    program=BBCBasicToText.DecodeProgram(contents,bbtt_options)
                     for wrap in [False]:
                         ext=".wrap.txt" if wrap else ".txt"
-                        with mkdir_and_open(raw_path+ext,'wb') as f:
+                        with mkdir_and_open(raw_path+ext,'wt') as f:
                             # Produce output like the BASIC Editor (readability
                             # not guaranteed)
-                            for num,text in decoded:
+                            for num,text in program.lines:
                                 wrap_width=64 if wrap else 65536
-                                wrapped=textwrap.wrap(wrap_width)
+                                wrapped=textwrap.wrap(text,wrap_width)
                                 num_text="%5d "%num
                                 for i in range(len(wrapped)):
                                     if i==0: prefix=num_text
                                     else: prefix=" "*len(num_text)
-                                    print>>f,"%s%s"%(prefix,wrapped[i])
+                                    f.write("%s%s\n"%(prefix,wrapped[i]))
 
 ##########################################################################
 ##########################################################################
