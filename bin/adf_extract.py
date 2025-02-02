@@ -121,6 +121,9 @@ class ADFSImage:
 
                 self._sectors.append(data[offset:offset+256])
 
+    @property
+    def bootopt(self): return self._sectors[1][0xfd]
+
     def get_sector(self,sector):
         assert sector>=0,sector
         assert self.ignore_size_mismatch or sector<len(self._sectors),(sector,len(self._sectors))
@@ -129,6 +132,30 @@ class ADFSImage:
             
 ##########################################################################
 ##########################################################################
+
+def write_inf(inf_path,name,load,exec,size,attr,kvs):
+    with open(inf_path,'wt') as f:
+        f.write('%s %08x %08x %08x %02x'%(name,load,exec,size,attr))
+        if len(kvs)>0:
+            for k,v in kvs.items():
+                kstr=str(k)
+                assert ' ' not in kstr
+
+                f.write(' %s='%k)
+
+                if isinstance(v,str):
+                    # TODO should probably handle quoting a bit better
+                    # than this.
+                    assert '"' not in str(v)
+                    f.write('"%s"'%v)
+                else: f.write('%s'%v)
+                
+        f.write('\n')
+
+##########################################################################
+##########################################################################
+
+ExtractDirResult=collections.namedtuple('ExtractDirResult','title')
 
 def extract_dir(adf,
                 adfs_path,
@@ -143,15 +170,21 @@ def extract_dir(adf,
     check_hugo(dir,1,'%s header'%adfs_path)
     check_hugo(dir,0x4fb,'%s footer'%adfs_path)
 
+    def get_string(offset,max_length):
+        s=''
+        for i in range(max_length):
+            c=dir[offset+i]&0x7f
+            if c==0 or c==13: break
+            s+=chr(c)
+        return s
+
+    title=get_string(0x4d9,19)
+
     for file_idx in range(47):
         offset=5+file_idx*0x1a
 
-        name=''
-        for i in range(10):
-            c=dir[offset+i]&0x7f
-            if c==0 or c==13: break
-            name+=chr(c)
-
+        # not actually sure what the rules 
+        name=get_string(offset,10)
         if len(name)==0: continue
 
         R=(dir[offset+0]&0x80)!=0
@@ -160,22 +193,33 @@ def extract_dir(adf,
         D=(dir[offset+3]&0x80)!=0
         E=(dir[offset+4]&0x80)!=0
 
+        attr=((0x11 if R else 0)|
+              (0x22 if W else 0)|
+              (0x44 if E else 0)|
+              (0x88 if L else 0))
+        
         if D:
             child_dir_sector=get_24le(dir,offset+0x16)
-            extract_dir(adf,
-                        adfs_path+[name],
-                        child_dir_sector,
-                        os.path.join(output_path,
-                                     bbc_inf.get_pc_name(name)))
+            pc_path=os.path.join(output_path,
+                                 bbc_inf.get_pc_name(name))
+            result=extract_dir(adf,
+                               adfs_path+[name],
+                               child_dir_sector,
+                               pc_path)
+            # The attributes and size are what Disk Image Manager
+            # writes out.
+            write_inf('%s.inf'%pc_path,
+                      name,
+                      0,
+                      0,
+                      0x500,
+                      attr,
+                      {'DIRTITLE':result.title})
         else:
             load_addr=get_32le(dir,offset+0xa)
             exec_addr=get_32le(dir,offset+0xe)
             size=get_32le(dir,offset+0x12)
             sector=get_24le(dir,offset+0x16)
-            attr=((0x11 if R else 0)|
-                  (0x22 if W else 0)|
-                  (0x44 if E else 0)|
-                  (0x88 if L else 0))
 
             pc_path=os.path.join(output_path,
                                  bbc_inf.get_pc_name(name))
@@ -195,7 +239,8 @@ def extract_dir(adf,
                 sector))
 
             data=bytearray()
-            while size>0:
+            num_bytes_left=size
+            while num_bytes_left>0:
                 next_sector=adf.get_sector(sector)
                 if next_sector is None:
                     warn('file "%s" runs past end of image - not extracting'%adfs_path_str)
@@ -206,17 +251,23 @@ def extract_dir(adf,
                     
                 data+=next_sector
                 sector+=1
-                size-=256
+                num_bytes_left-=256
 
             if data is not None:
                 pc_folder=os.path.dirname(pc_path)
                 if not os.path.isdir(pc_folder): os.makedirs(pc_folder)
 
-                with open('%s.inf'%pc_path,'wt') as f:
-                    f.write('%s %08x %08x %02x\n'%(name,load_addr,exec_addr,attr))
+                write_inf('%s.inf'%pc_path,
+                          name,
+                          load_addr,
+                          exec_addr,
+                          size,
+                          attr,
+                          {})
 
                 with open(pc_path,'wb') as f: f.write(data)
 
+    return ExtractDirResult(title=title)
             
 ##########################################################################
 ##########################################################################
@@ -232,11 +283,19 @@ def adf_extract(options):
                       options.sequential,
                       options.ignore_size_mismatch)
 
-    extract_dir(adf,
-                ['$'],
-                2,
-                os.path.join(options.output_path,input_basename))
-                             
+    root_path=os.path.join(options.output_path,input_basename)
+    result=extract_dir(adf,['$'],2,root_path)
+
+    write_inf('%s.inf'%root_path,
+              input_basename,
+              0,
+              0,
+              0x500,
+              0x99,
+              {
+                  'DIRTITLE':result.title,
+                  'OPT':adf.bootopt,
+              })
 
 ##########################################################################
 ##########################################################################
