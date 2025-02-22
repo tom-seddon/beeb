@@ -134,6 +134,9 @@ class ADFSImage:
 ##########################################################################
 
 def write_inf(inf_path,name,load,exec,size,attr,kvs):
+    inf_folder=os.path.dirname(inf_path)
+    if not os.path.isdir(inf_folder): os.makedirs(inf_folder)
+
     with open(inf_path,'wt') as f:
         f.write('%s %08x %08x %08x %02x'%(name,load,exec,size,attr))
         if len(kvs)>0:
@@ -254,9 +257,6 @@ def extract_dir(adf,
                 num_bytes_left-=256
 
             if data is not None:
-                pc_folder=os.path.dirname(pc_path)
-                if not os.path.isdir(pc_folder): os.makedirs(pc_folder)
-
                 write_inf('%s.inf'%pc_path,
                           name,
                           load_addr,
