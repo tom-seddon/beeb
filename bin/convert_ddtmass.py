@@ -17,6 +17,26 @@ import sys,os,os.path,argparse,collections
 ##########################################################################
 ##########################################################################
 
+# TODO: the label fixup is completely wrong! - but it didn't mattec
+# the code I tested it with enough to actually fix it. Needs to try to
+# xref things a bit better. Don't rename the global symbol. Check
+# caller and callee. Is the reference the global symbol? Act
+# accordingly.
+
+# TODO: seems like it might accept BASIC-type :-sepraated multiple
+# instructions per line, not currently handled.
+
+# TODO: should fix up labels such as "x" (etc.) that would trigger the
+# shadow definition of built-in warning
+
+# TODO: @E "fixup" should ignore @E in strings
+
+# TODO: comment alignment ain't right. Lines with only comments
+# sometimes seem to end up at COMMENT_COLUMN rather than column 0
+
+##########################################################################
+##########################################################################
+
 # 64tass output properties
 CODE_COLUMN=16
 COMMENT_COLUMN=32
@@ -140,37 +160,59 @@ def read(input_path,name,lines,indent=''):
 ##########################################################################
 ##########################################################################
 
-def is_symbol_byte(n): return (n>=ord('0') and n<=ord('9') or
-                               n>=ord('a') and n<=ord('z') or
-                               n>=ord('A') and n<=ord('Z'))
+def is_alpha_byte(n):
+    return (n>=ord('a') and n<=ord('z') or
+            n>=ord('A') and n<=ord('Z'))
 
-def fix_up_label_references(text,old_label,new_label):
+##########################################################################
+##########################################################################
+
+def is_symbol_byte(n):
+    return (n>=ord('0') and n<=ord('9') or
+            is_alpha_byte(n) or
+            n==ord('_'))
+
+##########################################################################
+##########################################################################
+
+def fix_up_references(text,old,new,fun):
     if text is None: return None
     
     assert isinstance(text,bytes),type(text)
-
-    old_label_bytes=old_label.encode('ascii')
-    new_label_bytes=new_label.encode('ascii')
+    assert isinstance(old,bytes),type(old)
+    assert isinstance(new,bytes),type(new)
     
     i=0
+    in_string=False
     while i<len(text):
-        i=text.find(old_label_bytes,i)
-        if i==-1: break
+        if text[i]==ord('"'):
+            in_string=not in_string
+            i+=1
+        elif ((not in_string) and text[i:i+len(old)]==old):
+            i2=i+len(old)
 
-        i2=i+len(old_label_bytes)
+            if i>0 and fun(text[i-1]):
+                i=i2
+                continue
 
-        if i>0 and is_symbol_byte(text[i-1]):
-            i=i2
-            continue
+            if i2<len(text) and fun(text[i2]):
+                i=i2
+                continue
 
-        if i2<len(text) and is_symbol_byte(text[i2]):
-            i=i2
-            continue
-
-        text=text[:i]+new_label_bytes+text[i2:]
-        i=i+len(new_label_bytes)
+            text=text[:i]+new+text[i2:]
+            i=i+len(new)
+        else: i+=1
 
     return text
+
+def fix_up_operator_references(text,old_oper,new_oper):
+    return fix_up_references(text,old_oper,new_oper,is_alpha_byte)
+
+def fix_up_label_references(text,old_label,new_label):
+    return fix_up_references(text,
+                             old_label.encode('ascii'),
+                             new_label.encode('ascii')
+                             ,is_symbol_byte)
 
 ##########################################################################
 ##########################################################################
@@ -251,7 +293,7 @@ def split_lines(lines,locations_by_label):
             if value_end>=len(l) and in_string:
                 fatal_line('unterminated string')
 
-            content=l[value_begin:value_end]
+            content=l[value_begin:value_end].rstrip()
             if is_code: line.code=content
             else: line.label_value=content
             
@@ -324,11 +366,13 @@ def fix_up_non_ascii_chars(lines):
 ##########################################################################
 ##########################################################################
 
-# Make opcodes and indexing references lower case.
+# Make opcodes, accumulator and indexing references lower case.
 #
 # Use $ as the hex char rather than &.
 #
 # Replace @E with *.
+#
+# Replace MOD with % etc.
 def fix_up_assembler_oddities(lines):
     mnemonics=[x.encode('ascii') for x in NMOS_MNEMONICS]
 
@@ -347,6 +391,8 @@ def fix_up_assembler_oddities(lines):
                     line.code=(line.code[:-len(indexing_suffix)]+
                                indexing_suffix.lower())
 
+            if line.code.endswith(b' A'): line.code=line.code[:-2]+b' a'
+
         def fix_stuff(text):
             if text is not None:
                 for i in range(len(text)):
@@ -358,12 +404,13 @@ def fix_up_assembler_oddities(lines):
                         text=text[:i]+b'$'+text[i+1:]
 
                 text=text.replace(b'@E',b'*')
+                text=fix_up_operator_references(text,b'MOD',b'%')
+                text=fix_up_operator_references(text,b'EOR',b'^')
 
             return text
 
         line.code=fix_stuff(line.code)
         line.label_value=fix_stuff(line.label_value)
-
 
 ##########################################################################
 ##########################################################################
@@ -373,6 +420,7 @@ def fix_up_pseudo_ops(lines):
         b'$EQUS':b'.text',
         b'$EQUB':b'.byte',
         b'$EQUW':b'.word',
+        b'$EQUD':b'.dword',
     }
     orge=b'$ORGE'
     defm=b'$DEFM'
@@ -432,6 +480,10 @@ def fix_up_pseudo_ops(lines):
 ##########################################################################
 
 def write_output(lines,f):
+    # f.write('''%s.tdef "|",$7f\n'''%(CODE_COLUMN*' '))
+    # f.write('''%s.tdef "\\",$5c\n'''%(CODE_COLUMN*' '))
+    # f.write('''%s.tdef "~",$7e\n'''%(CODE_COLUMN*' '))
+    
     for line in lines:
         text=''
 
@@ -486,18 +538,6 @@ def main2(options):
     if options.output_path=='-': write_output(lines,sys.stdout)
     elif options.output_path is not None:
         with open(options.output_path,'wt') as f: write_output(lines,f)
-
-    #     if label is not None: print('%s:%d: label: %s'%(line.file.path,line.number,label))
-    #     if comment is not None: print('%s:%d: comment: %s'%(line.file.path,line.number,comment))
-
-    # for label,locations in locations_by_label.items():
-    #     if len(locations)>1:
-    #         print('%s: %d'%(label,len(locations)))
-    #         for location in locations:
-    #             print('  %s:%d'%(location.file.path,location.line))
-
-
-    
     
 ##########################################################################
 ##########################################################################
