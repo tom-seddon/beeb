@@ -13,13 +13,13 @@ def fatal(msg):
 
 Test=collections.namedtuple('Test','hash parts')
 
-g_tests=[
-    Test(hash='3ea66152c72cb2dd38c434a1481081853fa8f084',parts=None),
-    Test(hash='92206050d22f2e4140b8f5093bea260186be3543',parts=None),
-]
-for parts_log2 in range(6):
-    g_tests.append(Test(hash='7171d360a3153364d895e0e67e81cc921ff88cc8',
-                       parts=1<<parts_log2))
+# List of commits to get, and optional number of parts to try with for
+# each commit.
+
+g_tests=[]
+for parts_log2 in range(8):
+    g_tests.append(Test(hash='f39105d3ae20af30516031e1b998d4e0f2052a97',
+                        parts=1<<parts_log2))
 
 ##########################################################################
 ##########################################################################
@@ -85,7 +85,7 @@ def main2(options):
         run(['git','submodule','update'])
 
         if test.parts is not None:
-            run([make_path,'bbcmicro_update','PARTS=%d'%test.parts])
+            run([make_path,'update_mfns','NUM_GROUPS=%d'%test.parts])
 
         if windows: run([make_path,'init_vs2019'])
         else: run([make_path,'init'])
@@ -132,9 +132,6 @@ def main(argv):
     parser.add_argument('--b2',dest='b2_path',metavar='PATH',required=True,help='''find b2 working copy on %(metavar)s''')
     parser.add_argument('-o','--output',dest='output_path',metavar='FILE',help='''write log to %(metavar)s''')
     main2(parser.parse_args(argv))
-
-##########################################################################
-##########################################################################
 
 ##########################################################################
 ##########################################################################
