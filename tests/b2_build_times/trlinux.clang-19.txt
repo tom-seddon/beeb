@@ -1,0 +1,32 @@
+wip/compilation2,1,Debug,Rebuild,158
+wip/compilation2,1,Debug,Touch BBCMicro.h,151
+wip/compilation2,1,RelWithDebInfo,Rebuild,647
+wip/compilation2,1,RelWithDebInfo,Touch BBCMicro.h,630
+wip/compilation2,2,Debug,Rebuild,85
+wip/compilation2,2,Debug,Touch BBCMicro.h,78
+wip/compilation2,2,RelWithDebInfo,Rebuild,346
+wip/compilation2,2,RelWithDebInfo,Touch BBCMicro.h,327
+wip/compilation2,4,Debug,Rebuild,53
+wip/compilation2,4,Debug,Touch BBCMicro.h,45
+wip/compilation2,4,RelWithDebInfo,Rebuild,209
+wip/compilation2,4,RelWithDebInfo,Touch BBCMicro.h,193
+wip/compilation2,8,Debug,Rebuild,32
+wip/compilation2,8,Debug,Touch BBCMicro.h,25
+wip/compilation2,8,RelWithDebInfo,Rebuild,119
+wip/compilation2,8,RelWithDebInfo,Touch BBCMicro.h,103
+wip/compilation2,16,Debug,Rebuild,23
+wip/compilation2,16,Debug,Touch BBCMicro.h,16
+wip/compilation2,16,RelWithDebInfo,Rebuild,73
+wip/compilation2,16,RelWithDebInfo,Touch BBCMicro.h,60
+wip/compilation2,32,Debug,Rebuild,22
+wip/compilation2,32,Debug,Touch BBCMicro.h,17
+wip/compilation2,32,RelWithDebInfo,Rebuild,71
+wip/compilation2,32,RelWithDebInfo,Touch BBCMicro.h,57
+wip/compilation2,64,Debug,Rebuild,23
+wip/compilation2,64,Debug,Touch BBCMicro.h,17
+wip/compilation2,64,RelWithDebInfo,Rebuild,61
+wip/compilation2,64,RelWithDebInfo,Touch BBCMicro.h,47
+wip/compilation2,128,Debug,Rebuild,29
+wip/compilation2,128,Debug,Touch BBCMicro.h,23
+wip/compilation2,128,RelWithDebInfo,Rebuild,80
+wip/compilation2,128,RelWithDebInfo,Touch BBCMicro.h,65
