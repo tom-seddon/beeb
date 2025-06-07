@@ -136,6 +136,7 @@ def main2(options):
         run2('Debug','d')
         run2('RelWithDebInfo','r')
 
+    os.chdir(b2_path)
     git_reset()
 
 ##########################################################################
