@@ -17,9 +17,9 @@ Test=collections.namedtuple('Test','hash parts')
 # each commit.
 
 g_tests=[]
-for parts_log2 in range(8):
-    g_tests.append(Test(hash='f39105d3ae20af30516031e1b998d4e0f2052a97',
-                        parts=1<<parts_log2))
+# for parts_log2 in range(8):
+#     g_tests.append(Test(hash='f39105d3ae20af30516031e1b998d4e0f2052a97',
+#                         parts=1<<parts_log2))
 
 ##########################################################################
 ##########################################################################
@@ -34,6 +34,10 @@ def run(argv):
     subprocess.run(argv,check=True)
     total_pc=time.perf_counter()-start_pc
     return total_pc
+
+def git_reset():
+    run(['git','reset','--hard'])
+    run(['git','clean','-f'])
 
 def capture(argv):
     result=subprocess.run(argv,check=True,capture_output=True,encoding='utf-8')
@@ -62,12 +66,22 @@ def main2(options):
     else:
         make_path='make'
 
-
     if options.output_path is None: output_path=None
     else:
         output_path=os.path.abspath(options.output_path)
         with open(output_path,'wt') as f: pass
+
+    os.chdir(b2_path)
+
+    if len(capture(['git','status','--porcelain']))!=0:
+        fatal('b2 working copy not clean: %s'%b2_path)
+
+    branch_name=capture(['git','branch','--show-current'])[0]
+    if len(branch_name)==0:
+        fatal('no branch name for working copy (detached head?): %s'%b2_path)
     
+    for i in range(8): g_tests.append(Test(hash=branch_name,parts=1<<i))
+
     for test in g_tests:
         def save_time(config,description,time):
             if output_path is None: return
@@ -80,7 +94,7 @@ def main2(options):
                                             time))
 
         os.chdir(b2_path)
-        run(['git','reset','--hard'])
+        git_reset()
         run(['git','checkout',test.hash])
         run(['git','submodule','update'])
 
@@ -119,10 +133,11 @@ def main2(options):
             if windows:
                 # monitor annoying per-run overhead
                 save_time(config,'No-op run',run([devenv_path,'/build',config,'b2.sln']))
-                                  
 
         run2('Debug','d')
         run2('RelWithDebInfo','r')
+
+    git_reset()
 
 ##########################################################################
 ##########################################################################
