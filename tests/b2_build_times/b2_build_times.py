@@ -62,7 +62,7 @@ def main2(options):
                          '-version','16',
                          '-property','installationPath'])[0].strip()
         devenv_path=os.path.join(vs_path,'Common7/IDE/devenv.com')
-        make_path=os.path.join(b2_path,'bin\snmake.exe')
+        make_path=os.path.join(b2_path,'bin/snmake.exe')
     else:
         make_path='make'
 
