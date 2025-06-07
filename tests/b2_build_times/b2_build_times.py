@@ -102,7 +102,7 @@ def main2(options):
             run([make_path,'update_mfns','NUM_GROUPS=%d'%test.parts])
 
         if windows: run([make_path,'init_vs2019'])
-        else: run([make_path,'init'])
+        else: run([make_path,'-j','_unixd','_unixr','_unixf'])
 
         def run2(config,folder):
             # Rebuild config
@@ -111,11 +111,10 @@ def main2(options):
                 save_time(config,'Rebuild',
                           run([devenv_path,'/Rebuild',config,'b2.sln']))
             else:
-                os.chdir(os.path.join(b2_path,'build/%s.%d'%(folder,
+                os.chdir(os.path.join(b2_path,'build/%s.%s'%(folder,
                                                              suffix)))
                 run(['ninja','clean'])
-                save_time('Rebuild %s'%config,
-                          run(['ninja']))
+                save_time(config,'Rebuild',run(['ninja']))
 
             # Touch BBCMicro.h
             best_time=None
