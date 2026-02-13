@@ -168,6 +168,12 @@ def main(options):
         num_files=image.read(side,0,1,5)>>3
         option=(image.read(side,0,1,6)>>4)&3
 
+        # Catalogue part 2 is Watford only.
+        num_files_2=0
+        if (image.read_bytes(side,0,2,0,8)==8*b'\xaa' and
+            image.read_bytes(side,0,2,0,4)==4*b'\x00'):
+            num_files_2=image.read(side,0,3,5)>>3
+
         if options.verbose or dest_dir is None:
             print("Side %d: \"%s\": Option %d, %d files"%(side,title,option,num_files))
 
@@ -185,21 +191,26 @@ def main(options):
                 with mkdir_and_open(os.path.join(pc_folder,'.opt4'),'wt') as f:
                     print(option,file=f)
 
-        for file_idx in range(num_files):
-            offset=8+file_idx*8
+        for file_idx in range(num_files+num_files_2):
+            if file_idx<num_files:
+                cat=0
+                offset=8+file_idx*8
+            else:
+                cat=2
+                offset=8+(file_idx-num_files)*8
             
-            name=image.read_string(side,0,0,offset,7).rstrip()
-            dir=image.read(side,0,0,offset+7)
+            name=image.read_string(side,0,cat+0,offset,7).rstrip()
+            dir=image.read(side,0,cat+0,offset+7)
 
             locked=(dir&0x80)!=0
             dir=chr(dir&0x7F)
 
-            load=(image.read(side,0,1,offset+0)<<0)|(image.read(side,0,1,offset+1)<<8)
-            exec_=(image.read(side,0,1,offset+2)<<0)|(image.read(side,0,1,offset+3)<<8)
-            length=(image.read(side,0,1,offset+4)<<0)|(image.read(side,0,1,offset+5)<<8)
-            start=image.read(side,0,1,offset+7)
+            load=(image.read(side,0,cat+1,offset+0)<<0)|(image.read(side,0,cat+1,offset+1)<<8)
+            exec_=(image.read(side,0,cat+1,offset+2)<<0)|(image.read(side,0,cat+1,offset+3)<<8)
+            length=(image.read(side,0,cat+1,offset+4)<<0)|(image.read(side,0,cat+1,offset+5)<<8)
+            start=image.read(side,0,cat+1,offset+7)
 
-            topbits=image.read(side,0,1,offset+6)
+            topbits=image.read(side,0,cat+1,offset+6)
 
             if (topbits>>6)&3:
                 # but there are two bits, so what are you supposed to do?
@@ -346,6 +357,11 @@ if __name__=="__main__":
                         action="store_true",
                         dest="drive2",
                         help="convert only side 2, putting files directly in dest dir (which must be given explicitly)")
+
+    parser.add_argument('--62',
+                        dest='_62',
+                        action='store_true',
+                        help='''handle Watford DFS 62-file disks''')
     
     parser.add_argument("fname",
                         metavar="FILE",
