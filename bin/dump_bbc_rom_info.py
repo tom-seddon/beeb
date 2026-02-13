@@ -47,7 +47,7 @@ def get_str(data,offset):
         i+=1
 
     if i>=len(data): return None
-    else: return encode(data[offset:i])
+    else: return data[offset:i]
 
 def not_rom(fname,reason): warn("Not a ROM (%s): %s"%(reason,fname))
 
@@ -128,9 +128,9 @@ def main(options):
                 not_rom(fname,"too small")
                 continue
         
-            copyr_offset=row.data[7]+1
-            copyr=get_str(row.data,copyr_offset)
-            if copyr is None or copyr[:3]!="(C)" or row.data[copyr_offset-1]!=0:
+            copyr_offset=row.data[7]
+            copyr=get_str(row.data,copyr_offset+1)
+            if copyr is None or copyr[:3]!=b'(C)' or row.data[copyr_offset]!=0:
                 not_rom(fname,"no (C)")
                 continue
 
@@ -165,11 +165,15 @@ def main(options):
             arch=flags&0x0F
 
             if relo:
-                relo_addr_offset=copyr_offset+len(copyr)+1
+                print(copyr_offset)
+                print(hex(copyr_offset))
+                print(hex(len(copyr)))
+                relo_addr_offset=copyr_offset+1+len(copyr)+1
                 if relo_addr_offset+5>=len(row.data):
                     not_rom(fname,"relo addr fail")
                     continue
 
+                print(hex(relo_addr_offset))
                 relo_addr=((row.data[relo_addr_offset+0]<<0)|
                            (row.data[relo_addr_offset+1]<<8)|
                            (row.data[relo_addr_offset+2]<<16)|
@@ -184,12 +188,12 @@ def main(options):
                     break
             p("\n")
 
-            p(item_prefix+"ROM title: %s\n"%title)
+            p(item_prefix+"ROM title: %s\n"%encode(title))
 
             p(item_prefix+"Version: %02X%s\n"%(row.data[8],
-                                         "" if version is None else " (%s)"%version))
-
-            p(item_prefix+"Copyright: %s\n"%copyr)
+                                         "" if version is None else " (%s)"%encode(version))
+)
+            p(item_prefix+"Copyright: %s\n"%encode(copyr))
 
             p(item_prefix+"Flags: %c%c%c%c\n"%("S" if serv else "-",
                                          "L" if lang else "-",
