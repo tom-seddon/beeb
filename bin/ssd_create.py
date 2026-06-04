@@ -70,6 +70,13 @@ def get_files(options):
 ##########################################################################
 ##########################################################################
 
+def strict_error(message,options):
+    if options.strict: fatal(message)
+    else: sys.stderr.write('NOTE: %s\n'%message)
+
+##########################################################################
+##########################################################################
+
 def get_beeb_files(files,options):
     beeb_names_seen_lc=set()
     inf_paths_seen=set()
@@ -97,12 +104,13 @@ def get_beeb_files(files,options):
         else: beeb_name=inf_data[0]
 
         if len(beeb_name)<3 or beeb_name[1]!='.':
-            print('NOTE: Not a DFS-style name: %s'%beeb_name,file=sys.stderr)
+            strict_error('Not a DFS-style name: %s'%beeb_name,options)
+            if options.strict: sys.exit(1)
             beeb_name='$.'+beeb_name
             print('NOTE: This file will be named: %s'%beeb_name,file=sys.stderr)
         
         if len(beeb_name)>9:
-            print('NOTE: Ignoring %s: BBC name too long: %s'%(file.pc_path,beeb_name),file=sys.stderr)
+            strict_error('%s: BBC name too long: %s'%(file.pc_path,beeb_name),options)
             continue
 
         load=int(inf_data[1],16)
@@ -363,6 +371,10 @@ def main(args):
     parser.add_argument('--all-locked',
                         action='store_true',
                         help='''make all files on disk image locked''')
+
+    parser.add_argument('--strict',
+                        action='store_true',
+                        help='''be more strict about file naming''')
 
     parser.add_argument("fnames",
                         nargs="*",
