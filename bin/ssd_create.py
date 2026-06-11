@@ -45,6 +45,13 @@ File=collections.namedtuple('File','pc_path beeb_name')
 ##########################################################################
 ##########################################################################
 
+def strict_error(message,options):
+    if options.strict: fatal(message)
+    else: sys.stderr.write('NOTE: %s\n'%message)
+
+##########################################################################
+##########################################################################
+
 def get_files(options):
     files=[]
 
@@ -62,17 +69,10 @@ def get_files(options):
         else:
             for path in paths:files.append(File(pc_path=path,beeb_name=None))
 
-    if any_non_matching:
-        if options.must_exist: fatal('provided names didn\'t all match')
+    if any_non_matching: strict_error('file(s) not found',options)
 
     return files
 
-##########################################################################
-##########################################################################
-
-def strict_error(message,options):
-    if options.strict: fatal(message)
-    else: sys.stderr.write('NOTE: %s\n'%message)
 
 ##########################################################################
 ##########################################################################
