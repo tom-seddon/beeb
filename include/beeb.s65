@@ -104,7 +104,7 @@ video_ula_palette=$fe21
                 
 ;-------------------------------------------------------------------------
 
-VIAIRQ: .block
+VIAIRQ: .namespace
 ca2=$01
 ca1=$02
 shift=$04
@@ -112,7 +112,7 @@ cb2=$08
 cb1=$10
 t2=$20
 t1=$40
-                .bend
+                .endnamespace
                 
 VIA: .struct                    ;
 orb:
