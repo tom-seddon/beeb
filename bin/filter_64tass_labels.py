@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-import sys,os,os.path,argparse,re,collections,fnmatch,dataclasses
+import sys,os,os.path,argparse,re,collections,fnmatch
 
 ##########################################################################
 ##########################################################################
@@ -21,18 +21,15 @@ numeric_value_re=re.compile(r'''^(?P<ivalue>[0-9]+)|\$(?P<xvalue>[0-9A-Fa-f]+)$'
 ##########################################################################
 ##########################################################################
 
-@dataclasses.dataclass
 class Label:
-    _:dataclasses.KW_ONLY
-    src_path:str|None=None
-    src_line:int|None=None
-    src_column:int|None=None
-    label_line:int
-    name:str
-    operator:str|None=None
-    value:int|str
-
-#Label=collections.namedtuple('Label','src_path src_line src_column label_line name operator value')
+    def __init__(self,src_path,src_line,src_column,label_line,name,operator,value):
+        self.src_path=src_path
+        self.src_line=src_line
+        self.src_column=src_column
+        self.label_line=label_line
+        self.name=name
+        self.operator=operator
+        self.value=value
 
 def load_labels(path,regex):
     def get_optional_match_group(m,name):
