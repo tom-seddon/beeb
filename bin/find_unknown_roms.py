@@ -15,7 +15,7 @@ def pv(msg):
 ##########################################################################
 
 LibraryROM=collections.namedtuple('LibraryROM','value')
-UnknownROM=collections.namedtuple('UnknownROM','path data')
+UnknownROM=collections.namedtuple('UnknownROM','path data notes')
 ROMInfo=collections.namedtuple('ROMInfo','type_ copyright_ title version version_str')
 
 class FileROM:
@@ -122,8 +122,26 @@ def main2(options):
                     hash=get_md5(data)
                     if hash in library_ROM_by_md5: continue
 
+                notes=[]
+                if not options.try_harder:
+                    if len(data)>8192:
+                        hash=get_md5(data[:8192])
+                        library_ROM=library_ROM_by_md5.get(hash)
+                        if library_ROM is not None: notes.append('first 8 KB matches: %s'%hash)
+                else:
+                    i=len(data)
+                    # 1024 is a fairly arbitrary cutoff.
+                    while i>1024:
+                        hash=get_md5(data[:i])
+                        library_ROM=library_ROM_by_md5.get(hash)
+                        if library_ROM is not None:
+                            notes.append('first %d bytes matches: %s'%(i,hash))
+                            break
+
+                        i-=1
+
                 assert rom_path not in unknown_ROM_by_path
-                unknown_ROM_by_path[rom_path]=UnknownROM(path=rom_path,data=data)
+                unknown_ROM_by_path[rom_path]=UnknownROM(path=rom_path,data=data,notes=notes)
 
     pv('Unknown ROMs on disk: %d/%d\n'%(len(unknown_ROM_by_path),num_roms_found))
 
@@ -184,7 +202,11 @@ def main2(options):
         rom=unknown_ROM_by_path[path]
         info=get_ROM_info(rom.data)
 
-        print('%s : %s'%(path,info.title))
+        line='%s : %s'%(path,info.title)
+
+        if len(rom.notes)>0: line+='- %s'%', '.join(rom.notes)
+
+        print(line)
 
 ##########################################################################
 ##########################################################################
@@ -193,6 +215,7 @@ def main(argv):
     parser=argparse.ArgumentParser()
 
     parser.add_argument('-v','--verbose',action='store_true',help='''be more verbose''')
+    parser.add_argument('--try-harder',action='store_true',help='''try harder to find possible matches, even if this might takes ages''')
     parser.add_argument('library_json_path',metavar='JSON-PATH',help='''read library JSON from %(metavar)s. Default: %(default)s''')
     parser.add_argument('rom_paths',metavar='ROM-PATH',nargs='*',help='''look for BBC Micro ROMs in %(metavar)s''')
 
