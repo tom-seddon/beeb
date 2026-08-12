@@ -145,7 +145,7 @@ with [JGH's tools](http://mdfs.net/Software/BBC/Modules/) too.
 
 [Example use](https://github.com/tom-seddon/startup_rom/blob/4193e31aff25d22b59f6ab099613ae7cedbe011c/Makefile#L13).
 
-# text2bbc, bbc2text (Python 2.7)
+# text2bbc; bbc2text (Python 2.7)
 
 Along the lines of [`dos2unix`](https://linux.die.net/man/1/dos2unix),
 convert files between modern standard line endings (lines ending with
